@@ -25,5 +25,14 @@ matrix:
     - name: "SPARK Verification"
       env: TARGET="prove_spark_ci"
 
+    - name: "SPARK Verification (CVC4 only)"
+      env: WRAPPER="travis_wait 111" TARGET="prove_spark_ci GNATPROVE_ARGS='--prover=cvc4 --steps=100000'"
+
+    - name: "SPARK Verification (Z3 only)"
+      env: WRAPPER="travis_wait 111" TARGET="prove_spark_ci GNATPROVE_ARGS='--prover=z3 --steps=100000'"
+
+    - name: "SPARK Verification (Alt-Ergo only)"
+      env: WRAPPER="travis_wait 111" TARGET="prove_spark_ci GNATPROVE_ARGS='--prover=altergo --steps=100000'"
+
 script:
-  - docker run -v $PWD:/app -w /app jklmnn/gnat:gpl.2019.spark /bin/sh -c "make ${TARGET}"
+  - ${WRAPPER} docker run -v $PWD:/app -w /app jklmnn/gnat:gpl.2019.spark /bin/sh -c "make ${TARGET}"
