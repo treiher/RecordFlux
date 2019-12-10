@@ -46,6 +46,7 @@ setup(
         'pyparsing >=2.4.0',
         'z3-solver',
         'pydotplus',
+        'PyYAML',
     ],
     extras_require={
         'test': requirements,
