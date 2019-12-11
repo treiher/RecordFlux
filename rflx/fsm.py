@@ -2,7 +2,7 @@ from typing import Dict, Iterable, Optional
 
 import yaml
 
-from rflx.model import Base
+from rflx.model import Base, ModelError
 
 
 class StateName(Base):
@@ -27,6 +27,9 @@ class StateMachine(Base):
         self.final = final
         self.states = states
 
+        if not states:
+            raise ModelError("empty states")
+
 
 class FSM:
     def __init__(self) -> None:
@@ -34,6 +37,12 @@ class FSM:
 
     def parse_string(self, name: str, string: str) -> None:
         doc = yaml.load(string)
+        if "initial" not in doc:
+            raise ModelError("missing initial state")
+        if "final" not in doc:
+            raise ModelError("missing final state")
+        if "states" not in doc:
+            raise ModelError("missing states")
         self.__fsms[name] = StateMachine(
             initial=StateName(doc["initial"]),
             final=StateName(doc["final"]),
