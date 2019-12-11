@@ -6,6 +6,7 @@ from rflx import cli
 from rflx.model import ModelError
 
 
+# pylint: disable=too-many-public-methods
 class TestCLI(TestCase):
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
@@ -115,6 +116,15 @@ class TestCLI(TestCase):
             self.assertEqual(
                 cli.main(["rflx", "graph", "-d", tmpdir, "tests/empty_package.rflx"]), 0
             )
+
+    def test_main_fsm(self) -> None:
+        self.assertEqual(cli.main(["rflx", "fsm", "specs/simple.yaml"]), 0)
+
+    def test_main_fsm_non_existent_file(self) -> None:
+        self.assertRegex(
+            str(cli.main(["rflx", "fsm", "non-existent file"])),
+            r'error: file not found: "non-existent file"$',
+        )
 
 
 def raise_model_error() -> None:

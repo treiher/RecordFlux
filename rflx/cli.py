@@ -6,6 +6,7 @@ from typing import List, Union
 
 from rflx import __version__
 from rflx.common import flat_name
+from rflx.fsm import FSM
 from rflx.generator import Generator, InternalError
 from rflx.graph import Graph
 from rflx.model import Model, ModelError
@@ -65,6 +66,10 @@ def main(argv: List[str]) -> Union[int, str]:
     )
     parser_graph.add_argument("-d", "--directory", help="output directory", default=".", type=str)
     parser_graph.set_defaults(func=graph)
+
+    parser_fsm = subparsers.add_parser("fsm", help="load fsm")
+    parser_fsm.add_argument("files", metavar="FILE", type=str, nargs="+", help="fsm file")
+    parser_fsm.set_defaults(func=fsm)
 
     args = parser.parse_args(argv[1:])
 
@@ -139,3 +144,15 @@ def graph(args: argparse.Namespace) -> None:
         message = flat_name(m.full_name)
         filename = Path(directory).joinpath(message).with_suffix(f".{args.format}")
         Graph(m).write(filename, fmt=args.format)
+
+
+def fsm(args: argparse.Namespace) -> None:
+    state_machine = FSM()
+
+    for f in args.files:
+        if not Path(f).is_file():
+            raise Error(f'file not found: "{f}"')
+
+        print(f"Loading FSM {f}... ", end="")
+        state_machine.parse(f, f)
+        print("OK")
