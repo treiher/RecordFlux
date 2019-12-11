@@ -108,6 +108,15 @@ class TestCLI(TestCase):
         with TemporaryDirectory() as tmpdir:
             self.assertEqual(cli.main(["rflx", "graph", "-d", tmpdir, "tests/package.rflx"]), 0)
 
+    def test_main_fsm(self) -> None:
+        self.assertEqual(cli.main(["rflx", "fsm", "specs/simple.yaml"]), 0)
+
+    def test_main_fsm_non_existent_file(self) -> None:
+        self.assertRegex(
+            str(cli.main(["rflx", "fsm", "non-existent file"])),
+            r'error: file not found: "non-existent file"$',
+        )
+
 
 def raise_model_error() -> None:
     raise ModelError

@@ -35,8 +35,7 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: Dict[str, StateMachine] = {}
 
-    def parse_string(self, name: str, string: str) -> None:
-        doc = yaml.load(string)
+    def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
         if "final" not in doc:
@@ -56,6 +55,13 @@ class FSM:
                 for s in doc["states"]
             ],
         )
+
+    def parse(self, name: str, filename: str) -> None:
+        with open(filename, "r") as data:
+            self.__parse(name, yaml.safe_load(data))
+
+    def parse_string(self, name: str, string: str) -> None:
+        self.__parse(name, yaml.safe_load(string))
 
     @property
     def fsms(self) -> Dict[str, StateMachine]:

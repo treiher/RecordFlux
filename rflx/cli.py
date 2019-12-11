@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Tuple, Union
 
 from rflx import __version__
+from rflx.fsm import FSM
 from rflx.generator import Generator, InternalError
 from rflx.graph import Graph
 from rflx.model import ModelError
@@ -57,6 +58,10 @@ def main(argv: List[str]) -> Union[int, str]:
     )
     parser_graph.add_argument("-d", "--directory", help="output directory", default=".", type=str)
     parser_graph.set_defaults(func=graph)
+
+    parser_fsm = subparsers.add_parser("fsm", help="load fsm")
+    parser_fsm.add_argument("files", metavar="FILE", type=str, nargs="+", help="fsm file")
+    parser_fsm.set_defaults(func=fsm)
 
     args = parser.parse_args(argv[1:])
 
@@ -140,3 +145,15 @@ def graph(args: argparse.Namespace) -> None:
             print(f"Creating graph {filename}... ", end="", flush=True)
             Graph(m).write(f, fmt=args.format)
             print("OK")
+
+
+def fsm(args: argparse.Namespace) -> None:
+    state_machine = FSM()
+
+    for f in args.files:
+        if not Path(f).is_file():
+            raise Error(f'file not found: "{f}"')
+
+        print(f"Loading FSM {f}... ", end="")
+        state_machine.parse(f, f)
+        print("OK")
