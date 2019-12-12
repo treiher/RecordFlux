@@ -7,7 +7,11 @@ from rflx.model import Element, ModelError
 
 class StateName(Element):
     def __init__(self, name: str):
-        self.name = name
+        self.__name = name
+
+    @property
+    def name(self) -> str:
+        return self.__name
 
 
 class Transition(Element):
@@ -17,18 +21,43 @@ class Transition(Element):
 
 class State(Element):
     def __init__(self, name: StateName, transitions: Optional[Iterable[Transition]] = None):
-        self.name = name
-        self.transitions = transitions or []
+        self.__name = name
+        self.__transitions = transitions or []
+
+    @property
+    def name(self) -> StateName:
+        return self.__name
+
+    @property
+    def transitions(self) -> Iterable[Transition]:
+        return self.__transitions or []
 
 
 class StateMachine(Element):
     def __init__(self, initial: StateName, final: StateName, states: Iterable[State]):
-        self.initial = initial
-        self.final = final
-        self.states = states
+        self.__initial = initial
+        self.__final = final
+        self.__states = states
 
         if not states:
             raise ModelError("empty states")
+
+    def __validate_initial_state(self, name: str) -> None:
+        states = [s.name for s in self.__states]
+        if self.__initial not in states:
+            raise ModelError(f'initial state "{self.__initial.name}" does not exist in "{name}"')
+        if self.__final not in states:
+            raise ModelError(f'final state "{self.__final.name}" does not exist in "{name}"')
+        for s in self.__states:
+            for t in s.transitions:
+                if t.target not in states:
+                    raise ModelError(
+                        f'transition from state "{s.name.name}" to non-existent state'
+                        f' "{t.target.name}" in "{name}"'
+                    )
+
+    def validate(self, name: str) -> None:
+        self.__validate_initial_state(name)
 
 
 class FSM:
@@ -55,6 +84,8 @@ class FSM:
                 for s in doc["states"]
             ],
         )
+        for f, v in self.__fsms.items():
+            v.validate(f)
 
     def parse(self, name: str, filename: str) -> None:
         with open(filename, "r") as data:
