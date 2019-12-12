@@ -74,3 +74,45 @@ class TestFSM(unittest.TestCase):
     def test_empty_states(self) -> None:
         with self.assertRaisesRegex(ModelError, "^empty states"):
             StateMachine(initial=StateName("START"), final=StateName("END"), states=[])
+
+    def test_invalid_initial(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: NONEXISTENT
+                final: START
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            '^initial state "NONEXISTENT" does not exist in "fsm"',
+        )
+
+    def test_invalid_final(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: NONEXISTENT
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            '^final state "NONEXISTENT" does not exist in "fsm"',
+        )
+
+    def test_invalid_target_state(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: NONEXISTENT
+                  - name: END
+            """,
+            '^transition from state "START" to non-existent state "NONEXISTENT" in "fsm"',
+        )
