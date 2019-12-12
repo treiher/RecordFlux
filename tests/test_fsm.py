@@ -116,3 +116,37 @@ class TestFSM(unittest.TestCase):
             """,
             '^transition from state "START" to non-existent state "NONEXISTENT" in "fsm"',
         )
+
+    def test_duplicate_state(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: START
+                  - name: END
+            """,
+            "^duplicate states START",
+        )
+
+    def test_multiple_duplicate_states(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: START
+                  - name: FOO
+                  - name: BAR
+                  - name: FOO
+                  - name: BAR
+                  - name: END
+            """,
+            "^duplicate states BAR, FOO, START",
+        )

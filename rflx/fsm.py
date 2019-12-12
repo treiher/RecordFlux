@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 
 import yaml
 
@@ -55,6 +55,19 @@ class StateMachine(Base):
                         f'transition from state "{s.name.name}" to non-existent state'
                         f' "{t.target.name}" in "{name}"'
                     )
+
+        seen: Dict[str, int] = {}
+        duplicates: List[str] = []
+        for n in [x.name for x in states]:
+            if n not in seen:
+                seen[n] = 1
+            else:
+                if seen[n] == 1:
+                    duplicates.append(n)
+                seen[n] += 1
+
+        if duplicates:
+            raise ModelError("duplicate states {dups}".format(dups=", ".join(sorted(duplicates))))
 
     def validate(self, name: str) -> None:
         self.__validate_initial_state(name)
