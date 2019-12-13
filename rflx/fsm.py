@@ -43,29 +43,32 @@ class StateMachine(Base):
         if not states:
             raise ModelError("empty states")
 
-        self.__validate_initial_state()
+        self.__validate_state_existence()
+        self.__validate_duplicate_states()
 
-    def __validate_initial_state(self) -> None:
-        states = [s.name for s in self.__states]
-        if self.__initial not in states:
+    def __validate_state_existence(self) -> None:
+        state_names = [s.name for s in self.__states]
+        if self.__initial not in state_names:
             raise ModelError(
                 f'initial state "{self.__initial.name}" does not exist in' f' "{self.__name}"'
             )
-        if self.__final not in states:
+        if self.__final not in state_names:
             raise ModelError(
                 f'final state "{self.__final.name}" does not exist in' f' "{self.__name}"'
             )
         for s in self.__states:
             for t in s.transitions:
-                if t.target not in states:
+                if t.target not in state_names:
                     raise ModelError(
                         f'transition from state "{s.name.name}" to non-existent state'
                         f' "{t.target.name}" in "{self.__name}"'
                     )
 
+    def __validate_duplicate_states(self) -> None:
+        state_names = [s.name for s in self.__states]
         seen: Dict[str, int] = {}
         duplicates: List[str] = []
-        for n in [x.name for x in states]:
+        for n in [x.name for x in state_names]:
             if n not in seen:
                 seen[n] = 1
             else:
