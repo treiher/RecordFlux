@@ -159,3 +159,43 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("END")),
                 ],
             )
+
+    def test_unreachable_state(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^unreachable states UNREACHABLE"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(
+                        name=StateName("UNREACHABLE"),
+                        transitions=[Transition(target=StateName("END"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+            )
+
+    def test_multiple_unreachable_states(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^unreachable states UNREACHABLE1, UNREACHABLE2"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(
+                        name=StateName("UNREACHABLE1"),
+                        transitions=[Transition(target=StateName("END"))],
+                    ),
+                    State(
+                        name=StateName("UNREACHABLE2"),
+                        transitions=[Transition(target=StateName("END"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+            )
