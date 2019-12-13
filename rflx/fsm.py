@@ -34,7 +34,8 @@ class State(Base):
 
 
 class StateMachine(Base):
-    def __init__(self, initial: StateName, final: StateName, states: Iterable[State]):
+    def __init__(self, name: str, initial: StateName, final: StateName, states: Iterable[State]):
+        self.__name = name
         self.__initial = initial
         self.__final = final
         self.__states = states
@@ -42,18 +43,24 @@ class StateMachine(Base):
         if not states:
             raise ModelError("empty states")
 
-    def __validate_initial_state(self, name: str) -> None:
+        self.__validate_initial_state()
+
+    def __validate_initial_state(self) -> None:
         states = [s.name for s in self.__states]
         if self.__initial not in states:
-            raise ModelError(f'initial state "{self.__initial.name}" does not exist in "{name}"')
+            raise ModelError(
+                f'initial state "{self.__initial.name}" does not exist in' f' "{self.__name}"'
+            )
         if self.__final not in states:
-            raise ModelError(f'final state "{self.__final.name}" does not exist in "{name}"')
+            raise ModelError(
+                f'final state "{self.__final.name}" does not exist in' f' "{self.__name}"'
+            )
         for s in self.__states:
             for t in s.transitions:
                 if t.target not in states:
                     raise ModelError(
                         f'transition from state "{s.name.name}" to non-existent state'
-                        f' "{t.target.name}" in "{name}"'
+                        f' "{t.target.name}" in "{self.__name}"'
                     )
 
         seen: Dict[str, int] = {}
@@ -69,13 +76,10 @@ class StateMachine(Base):
         if duplicates:
             raise ModelError("duplicate states {dups}".format(dups=", ".join(sorted(duplicates))))
 
-    def validate(self, name: str) -> None:
-        self.__validate_initial_state(name)
-
 
 class FSM:
     def __init__(self) -> None:
-        self.__fsms: Dict[str, StateMachine] = {}
+        self.__fsms: List[StateMachine] = []
 
     def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:
@@ -84,7 +88,8 @@ class FSM:
             raise ModelError("missing final state")
         if "states" not in doc:
             raise ModelError("missing states")
-        self.__fsms[name] = StateMachine(
+        fsm = StateMachine(
+            name=name,
             initial=StateName(doc["initial"]),
             final=StateName(doc["final"]),
             states=[
@@ -97,8 +102,7 @@ class FSM:
                 for s in doc["states"]
             ],
         )
-        for f, v in self.__fsms.items():
-            v.validate(f)
+        self.__fsms.append(fsm)
 
     def parse(self, name: str, filename: str) -> None:
         with open(filename, "r") as data:
@@ -108,5 +112,5 @@ class FSM:
         self.__parse(name, yaml.safe_load(string))
 
     @property
-    def fsms(self) -> Dict[str, StateMachine]:
+    def fsms(self) -> List[StateMachine]:
         return self.__fsms

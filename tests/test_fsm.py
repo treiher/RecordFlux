@@ -27,6 +27,7 @@ class TestFSM(unittest.TestCase):
             """,
         )
         expected = StateMachine(
+            name="fsm",
             initial=StateName("START"),
             final=StateName("END"),
             states=[
@@ -34,7 +35,7 @@ class TestFSM(unittest.TestCase):
                 State(name=StateName("END")),
             ],
         )
-        self.assertEqual(f.fsms["fsm"], expected)
+        self.assertEqual(f.fsms[0], expected)
 
     def test_missing_initial(self) -> None:
         self.assert_parse_exception_string(
@@ -73,21 +74,23 @@ class TestFSM(unittest.TestCase):
 
     def test_empty_states(self) -> None:
         with self.assertRaisesRegex(ModelError, "^empty states"):
-            StateMachine(initial=StateName("START"), final=StateName("END"), states=[])
+            StateMachine(name="fsm", initial=StateName("START"), final=StateName("END"), states=[])
 
     def test_invalid_initial(self) -> None:
-        self.assert_parse_exception_string(
-            """
-                initial: NONEXISTENT
-                final: START
-                states:
-                  - name: START
-                    transitions:
-                      - target: END
-                  - name: END
-            """,
-            '^initial state "NONEXISTENT" does not exist in "fsm"',
-        )
+        with self.assertRaisesRegex(
+            ModelError, '^initial state "NONEXISTENT" does not exist in "fsm"'
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("NONEXISTENT"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(name=StateName("END")),
+                ],
+            )
 
     def test_invalid_final(self) -> None:
         self.assert_parse_exception_string(
