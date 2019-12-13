@@ -93,63 +93,69 @@ class TestFSM(unittest.TestCase):
             )
 
     def test_invalid_final(self) -> None:
-        self.assert_parse_exception_string(
-            """
-                initial: START
-                final: NONEXISTENT
-                states:
-                  - name: START
-                    transitions:
-                      - target: END
-                  - name: END
-            """,
-            '^final state "NONEXISTENT" does not exist in "fsm"',
-        )
+        with self.assertRaisesRegex(
+            ModelError, '^final state "NONEXISTENT" does not exist in "fsm"'
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("NONEXISTENT"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(name=StateName("END")),
+                ],
+            )
 
     def test_invalid_target_state(self) -> None:
-        self.assert_parse_exception_string(
-            """
-                initial: START
-                final: END
-                states:
-                  - name: START
-                    transitions:
-                      - target: NONEXISTENT
-                  - name: END
-            """,
-            '^transition from state "START" to non-existent state "NONEXISTENT" in "fsm"',
-        )
+        with self.assertRaisesRegex(
+            ModelError,
+            '^transition from state "START" to non-existent state' ' "NONEXISTENT" in "fsm"',
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("NONEXISTENT"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+            )
 
     def test_duplicate_state(self) -> None:
-        self.assert_parse_exception_string(
-            """
-                initial: START
-                final: END
-                states:
-                  - name: START
-                    transitions:
-                      - target: END
-                  - name: START
-                  - name: END
-            """,
-            "^duplicate states START",
-        )
+        with self.assertRaisesRegex(ModelError, "^duplicate states START"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(name=StateName("START")),
+                    State(name=StateName("END")),
+                ],
+            )
 
     def test_multiple_duplicate_states(self) -> None:
-        self.assert_parse_exception_string(
-            """
-                initial: START
-                final: END
-                states:
-                  - name: START
-                    transitions:
-                      - target: END
-                  - name: START
-                  - name: FOO
-                  - name: BAR
-                  - name: FOO
-                  - name: BAR
-                  - name: END
-            """,
-            "^duplicate states BAR, FOO, START",
-        )
+        with self.assertRaisesRegex(ModelError, "^duplicate states BAR, FOO, START"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"), transitions=[Transition(target=StateName("END"))]
+                    ),
+                    State(name=StateName("START")),
+                    State(name=StateName("FOO")),
+                    State(name=StateName("BAR")),
+                    State(name=StateName("FOO")),
+                    State(name=StateName("BAR")),
+                    State(name=StateName("END")),
+                ],
+            )
