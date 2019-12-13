@@ -96,6 +96,12 @@ class StateMachine(Base):
         if unreachable:
             raise ModelError("unreachable states {states}".format(states=", ".join(unreachable)))
 
+        detached = [
+            s.name.name for s in self.__states if s.name != self.__final and not s.transitions
+        ]
+        if detached:
+            raise ModelError("detached states {states}".format(states=", ".join(detached)))
+
 
 class FSM:
     def __init__(self) -> None:
