@@ -283,3 +283,25 @@ class TestFSM(unittest.TestCase):
             ],
         )
         self.assertEqual(f.fsms[0], expected)
+
+    def test_fsm_with_invalid_condition(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, '^error parsing condition 0 from state "START" to "INTERMEDIATE"'
+        ):
+            FSM().parse_string(
+                "fsm",
+                """
+                    initial: START
+                    final: END
+                    states:
+                      - name: START
+                        transitions:
+                          - target: INTERMEDIATE
+                            condition: and Invalid
+                          - target: END
+                      - name: INTERMEDIATE
+                        transitions:
+                          - target: END
+                      - name: END
+                """,
+            )

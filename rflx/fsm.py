@@ -1,7 +1,7 @@
 from typing import Dict, Iterable, List, Optional
 
 import yaml
-from pyparsing import Keyword, Token
+from pyparsing import Keyword, ParseFatalException, Token
 
 from rflx.expression import FALSE, TRUE, Equal, Expr, Variable
 from rflx.model import Base, ModelError
@@ -134,9 +134,16 @@ class FSM:
         for s in doc["states"]:
             transitions: List[Transition] = []
             if "transitions" in s:
-                for t in s["transitions"]:
+                for index, t in enumerate(s["transitions"]):
                     if "condition" in t:
-                        condition = FSM.logical_equation().parseString(t["condition"])[0]
+                        try:
+                            condition = FSM.logical_equation().parseString(t["condition"])[0]
+                        except ParseFatalException:
+                            sname = s["name"]
+                            tname = t["target"]
+                            raise ModelError(
+                                f'error parsing condition {index} from state "{sname}" to "{tname}"'
+                            )
                     else:
                         condition = TRUE
                     transitions.append(
