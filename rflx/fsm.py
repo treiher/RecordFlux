@@ -5,7 +5,7 @@ from pyparsing import Keyword, ParseFatalException, Token
 
 from rflx.expression import FALSE, TRUE, Equal, Expr, Variable
 from rflx.model import Base, ModelError
-from rflx.parser.grammar import boolean_literal, unqualified_identifier
+from rflx.parser.grammar import boolean_literal, qualified_identifier, unqualified_identifier
 
 
 class StateName(Base):
@@ -116,11 +116,15 @@ class FSM:
         self.__fsms: List[StateMachine] = []
 
     @classmethod
+    def rhs(cls) -> Token:
+        boolean = boolean_literal().setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
+        identifier = qualified_identifier().setParseAction(lambda t: Variable("".join(t)))
+        return boolean | identifier
+
+    @classmethod
     def logical_equation(cls) -> Token:
-        result = unqualified_identifier() + Keyword("=") + boolean_literal()
-        return result.setParseAction(
-            lambda t: Equal(Variable(t[0]), TRUE if t[2] == "True" else FALSE)
-        )
+        result = unqualified_identifier() + Keyword("=") + cls.rhs()
+        return result.setParseAction(lambda t: Equal(Variable(t[0]), t[2]))
 
     def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:
