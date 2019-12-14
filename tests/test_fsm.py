@@ -1,5 +1,6 @@
 import unittest
 
+from rflx.expression import FALSE, Equal, Variable
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
 from rflx.model import ModelError
 
@@ -239,3 +240,46 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("END")),
                 ],
             )
+
+    def test_fsm_with_conditions(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: INTERMEDIATE
+                        condition: Error = False
+                      - target: END
+                  - name: INTERMEDIATE
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("INTERMEDIATE"),
+                            condition=Equal(Variable("Error"), FALSE),
+                        ),
+                        Transition(target=StateName("END")),
+                    ],
+                ),
+                State(
+                    name=StateName("INTERMEDIATE"),
+                    transitions=[Transition(target=StateName("END"))],
+                ),
+                State(name=StateName("END")),
+            ],
+        )
+        self.assertEqual(f.fsms[0], expected)
