@@ -301,6 +301,10 @@ class Parser:
         return range_type_definition | modular_type_definition
 
     @classmethod
+    def boolean_literal(cls) -> Token:
+        return (Keyword("True") | Keyword("False")).setParseAction(lambda t: t[0] == "True")
+
+    @classmethod
     def enumeration_type_definition(cls) -> Token:
         enumeration_literal = cls.name()
         positional_enumeration = enumeration_literal + ZeroOrMore(COMMA - enumeration_literal)
@@ -313,9 +317,7 @@ class Parser:
             COMMA - element_value_association
         )
 
-        boolean_literal = Keyword("True") | Keyword("False")
-        boolean_literal.setParseAction(lambda t: t[0] == "True")
-        boolean_aspect_definition = Optional(Keyword("=>") - boolean_literal)
+        boolean_aspect_definition = Optional(Keyword("=>") - cls.boolean_literal())
         boolean_aspect_definition.setParseAction(lambda t: (t if t else ["=>", True]))
         always_valid_aspect = Literal("Always_Valid") - boolean_aspect_definition
         always_valid_aspect.setParseAction(parse_aspect)
