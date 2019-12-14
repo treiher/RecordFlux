@@ -116,11 +116,17 @@ class FSM:
         self.__fsms: List[StateMachine] = []
 
     @classmethod
-    def logical_equation(cls):
-        result = Parser.identifier() + Keyword("=") + Parser.boolean_literal()
-        return result.setParseAction(
-            lambda t: Equal(Variable(t[0]), TRUE if t[2] == "True" else FALSE)
+    def rhs(cls):
+        boolean = Parser.boolean_literal().setParseAction(
+            lambda t: TRUE if t[0] == "True" else FALSE
         )
+        identifier = Parser.qualified_identifier().setParseAction(lambda t: Variable("".join(t)))
+        return boolean | identifier
+
+    @classmethod
+    def logical_equation(cls):
+        result = Parser.identifier() + Keyword("=") + cls.rhs()
+        return result.setParseAction(lambda t: Equal(Variable(t[0]), t[2]))
 
     def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:

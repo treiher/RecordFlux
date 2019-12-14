@@ -305,3 +305,46 @@ class TestFSM(unittest.TestCase):
                       - name: END
                 """,
             )
+
+    def test_fsm_condition_equal(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: INTERMEDIATE
+                        condition: Error = Message.Some_Error
+                      - target: END
+                  - name: INTERMEDIATE
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("INTERMEDIATE"),
+                            condition=Equal(Variable("Error"), Variable("Message.Some_Error")),
+                        ),
+                        Transition(target=StateName("END")),
+                    ],
+                ),
+                State(
+                    name=StateName("INTERMEDIATE"),
+                    transitions=[Transition(target=StateName("END"))],
+                ),
+                State(name=StateName("END")),
+            ],
+        )
+        self.assertEqual(f.fsms[0], expected)
