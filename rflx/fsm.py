@@ -1,10 +1,9 @@
 from typing import Dict, Iterable, List, Optional
 
 import yaml
+from pyparsing import Keyword
 
-from pyparsing import (Keyword)
-
-from rflx.expression import Equal, Expr, FALSE, TRUE, Variable
+from rflx.expression import FALSE, TRUE, Equal, Expr, Variable
 from rflx.model import Element, ModelError
 from rflx.parser import Parser
 
@@ -119,7 +118,9 @@ class FSM:
     @classmethod
     def logical_equation(cls):
         result = Parser.identifier() + Keyword("=") + Parser.boolean_literal()
-        return result.setParseAction(lambda t: Equal(Variable(t[0]), TRUE if t[2] == 'True' else FALSE))
+        return result.setParseAction(
+            lambda t: Equal(Variable(t[0]), TRUE if t[2] == "True" else FALSE)
+        )
 
     def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:
@@ -130,23 +131,32 @@ class FSM:
             raise ModelError("missing states")
 
         states: List[State] = []
-        for s in doc['states']:
+        for s in doc["states"]:
             transitions: Optional[List[Transitions]] = []
-            if 'transitions' in s:
-                for t in s['transitions']:
-                    if 'condition' in t:
-                        condition = FSM.logical_equation().parseString(t['condition'])[0]
+            if "transitions" in s:
+                for index, t in enumerate(s["transitions"]):
+                    if "condition" in t:
+                        try:
+                            condition = FSM.logical_equation().parseString(t["condition"])[0]
+                        except:
+                            sname = s["name"]
+                            tname = t["target"]
+                            raise ModelError(
+                                f'error parsing condition {index} from state "{sname}" to "{tname}"'
+                            )
                     else:
                         condition = TRUE
-                    transitions.append(Transition(target=StateName(t['target']),
-                                                  condition=condition))
-            states.append(State(name=StateName(s['name']),
-                                transitions=transitions))
+                    transitions.append(
+                        Transition(target=StateName(t["target"]), condition=condition)
+                    )
+            states.append(State(name=StateName(s["name"]), transitions=transitions))
 
-        fsm = StateMachine(name=name,
-                           initial=StateName(doc['initial']),
-                           final=StateName(doc['final']),
-                           states=states)
+        fsm = StateMachine(
+            name=name,
+            initial=StateName(doc["initial"]),
+            final=StateName(doc["final"]),
+            states=states,
+        )
         self.__fsms.append(fsm)
 
     def parse(self, name: str, filename: str) -> None:
