@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import yaml
 from pyparsing import ParseFatalException
@@ -115,7 +115,7 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: List[StateMachine] = []
 
-    def __parse(self, name: str, doc: Dict) -> None:
+    def __parse(self, name: str, doc: Dict[str, Any]) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
         if "final" not in doc:
@@ -123,11 +123,29 @@ class FSM:
         if "states" not in doc:
             raise ModelError("missing states")
 
+        rest = set(doc.keys()) - set(
+            ["channels", "variables", "functions", "initial", "final", "states"]
+        )
+        if rest:
+            raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
+
         states: List[State] = []
         for s in doc["states"]:
+            state = s["name"]
+            rest = s.keys() - ["name", "actions", "transitions", "variables", "doc"]
+            if rest:
+                elements = ", ".join(sorted(rest))
+                raise ModelError(f"unexpected elements [{elements}] in state {state}")
             transitions: List[Transition] = []
             if "transitions" in s:
                 for index, t in enumerate(s["transitions"]):
+                    rest = t.keys() - ["condition", "target", "doc"]
+                    if rest:
+                        elements = ", ".join(sorted(rest))
+                        raise ModelError(
+                            f"unexpected elements [{elements}] in transition {index}"
+                            f" state {state}"
+                        )
                     if "condition" in t:
                         try:
                             condition = FSMParser.condition().parseString(t["condition"])[0]
