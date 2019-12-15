@@ -1,11 +1,11 @@
 from typing import Dict, Iterable, List, Optional
 
 import yaml
-from pyparsing import Keyword, ParseFatalException, Token
+from pyparsing import ParseFatalException
 
-from rflx.expression import FALSE, TRUE, Equal, Expr, Variable
+from rflx.expression import TRUE, Expr
+from rflx.fsm_parser import FSMParser
 from rflx.model import Base, ModelError
-from rflx.parser.grammar import boolean_literal, qualified_identifier, unqualified_identifier
 
 
 class StateName(Base):
@@ -115,17 +115,6 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: List[StateMachine] = []
 
-    @classmethod
-    def rhs(cls) -> Token:
-        boolean = boolean_literal().setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
-        identifier = qualified_identifier().setParseAction(lambda t: Variable("".join(t)))
-        return boolean | identifier
-
-    @classmethod
-    def logical_equation(cls) -> Token:
-        result = unqualified_identifier() + Keyword("=") + cls.rhs()
-        return result.setParseAction(lambda t: Equal(Variable(t[0]), t[2]))
-
     def __parse(self, name: str, doc: Dict) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
@@ -141,7 +130,7 @@ class FSM:
                 for index, t in enumerate(s["transitions"]):
                     if "condition" in t:
                         try:
-                            condition = FSM.logical_equation().parseString(t["condition"])[0]
+                            condition = FSMParser.condition().parseString(t["condition"])[0]
                         except ParseFatalException:
                             sname = s["name"]
                             tname = t["target"]
