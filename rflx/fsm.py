@@ -3,8 +3,8 @@ from typing import Dict, Iterable, List, Optional
 import yaml
 from pyparsing import Keyword
 
-from rflx.expression import FALSE, TRUE, Attribute, Equal, Expr, Variable
-from rflx.fsm_parser import FSM_Parser
+from rflx.expression import TRUE, Expr
+from rflx.fsm_parser import FSMParser
 from rflx.model import Element, ModelError
 
 
@@ -125,17 +125,18 @@ class FSM:
 
         states: List[State] = []
         for s in doc["states"]:
-            transitions: Optional[List[Transitions]] = []
+            transitions: List[Transition] = []
             if "transitions" in s:
                 for index, t in enumerate(s["transitions"]):
                     if "condition" in t:
                         try:
-                            condition = FSM_Parser.condition().parseString(t["condition"])[0]
-                        except:
+                            condition = FSMParser.condition().parseString(t["condition"])[0]
+                        except Exception:
                             sname = s["name"]
                             tname = t["target"]
                             raise ModelError(
-                                f'error parsing condition {index} from state "{sname}" to "{tname}"'
+                                f"error parsing condition {index} from state "
+                                f'"{sname}" to "{tname}"'
                             )
                     else:
                         condition = TRUE
