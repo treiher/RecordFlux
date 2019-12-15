@@ -348,3 +348,19 @@ class TestFSM(unittest.TestCase):
             ],
         )
         self.assertEqual(f.fsms[0], expected)
+
+    def test_unexpected_elements(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                invalid1: FOO
+                invalid2: BAR
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            r"^unexpected elements \[invalid1, invalid2\]",
+        )
