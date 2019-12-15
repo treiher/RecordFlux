@@ -135,7 +135,8 @@ class FSM:
                             sname = s["name"]
                             tname = t["target"]
                             raise ModelError(
-                                f'error parsing condition {index} from state "{sname}" to "{tname}"'
+                                f"error parsing condition {index} from state "
+                                f'"{sname}" to "{tname}"'
                             )
                     else:
                         condition = TRUE

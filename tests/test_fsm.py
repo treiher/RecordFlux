@@ -286,7 +286,7 @@ class TestFSM(unittest.TestCase):
 
     def test_fsm_with_invalid_condition(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, '^error parsing condition 0 from state "START" to "INTERMEDIATE"'
+            ModelError, '^error parsing condition 0 from state "START" to' ' "INTERMEDIATE"'
         ):
             FSM().parse_string(
                 "fsm",
