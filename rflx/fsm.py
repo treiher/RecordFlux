@@ -124,7 +124,7 @@ class FSM:
             raise ModelError("missing states")
 
         rest = set(doc.keys()) - set(
-            ["channels", "variables", "functions", "initial", "final", "states"]
+            ["channels", "variables", "functions", "initial", "final", "states", "renames", "types"]
         )
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
