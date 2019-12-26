@@ -1,10 +1,70 @@
+from typing import Mapping
+
 import z3
 
-from rflx.expression import Attribute, Expr, Not, Precedence, Relation
+from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation, Variable
 
 
 class Valid(Attribute):
     pass
+
+
+class Quantifier(Expr):
+    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
+        self.__quantifier = quantifier
+        self.__iterable = iteratable
+        self.__predicate = predicate
+        self.symbol: str = ""
+
+    def __repr__(self) -> str:
+        return f"for {self.symbol} {self.__quantifier} in {self.__iterable} => {self.__predicate}"
+
+    def __neg__(self) -> "Expr":
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class ForSome(Quantifier):
+    symbol: str = "some"
+
+    def __neg__(self) -> "Expr":
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class ForAll(Quantifier):
+    symbol: str = "all"
+
+    def __neg__(self) -> "Expr":
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
 
 
 class Contains(Relation):
