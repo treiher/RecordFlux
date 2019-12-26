@@ -4,7 +4,7 @@ from pyparsing import Keyword, Literal, StringEnd, Token, infixNotation, opAssoc
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
 from rflx.fsm_expression import Contains, NotContains, Valid
-from rflx.parser.grammar import boolean_literal, qualified_identifier
+from rflx.parser.grammar import boolean_literal, numeric_literal, qualified_identifier
 
 
 class FSMParser:
@@ -21,12 +21,12 @@ class FSMParser:
     @classmethod
     def __parse_conjunction(cls, tokens: List[List[Expr]]) -> Expr:
         t = tokens[0]
-        return And(t[0], t[2])
+        return And(*t)
 
     @classmethod
     def __parse_disjunction(cls, tokens: List[List[Expr]]) -> Expr:
         t = tokens[0]
-        return Or(t[0], t[2])
+        return Or(*t)
 
     @classmethod
     def __parse_in(cls, tokens: List[List[Expr]]) -> Expr:
@@ -50,7 +50,7 @@ class FSMParser:
         valid.setParseAction(lambda t: Valid(t[0]))
 
         equation = infixNotation(
-            literal | valid | identifier,
+            numeric_literal() | literal | valid | identifier,
             [
                 (Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
                 (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
@@ -62,8 +62,8 @@ class FSMParser:
         result = infixNotation(
             equation,
             [
-                (Keyword("and"), 2, opAssoc.LEFT, cls.__parse_conjunction),
-                (Keyword("or"), 2, opAssoc.LEFT, cls.__parse_disjunction),
+                (Keyword("and").suppress(), 2, opAssoc.LEFT, cls.__parse_conjunction),
+                (Keyword("or").suppress(), 2, opAssoc.LEFT, cls.__parse_disjunction),
             ],
         )
         return result
