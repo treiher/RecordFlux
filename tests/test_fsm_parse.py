@@ -1,7 +1,7 @@
 import unittest
 
 from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Number, Or, Variable
-from rflx.fsm_expression import Contains, NotContains, Valid
+from rflx.fsm_expression import Contains, ForAll, ForSome, NotContains, Valid
 from rflx.fsm_parser import FSMParser
 
 
@@ -51,9 +51,9 @@ class TestFSM(unittest.TestCase):
         )
 
     def test_disjunction_multi(self) -> None:
-        result = FSMParser.condition().parseString("Foo = Bar or Bar /= Baz or Baz'Valid = False")[
-            0
-        ]
+        result = FSMParser.condition().parseString(
+            "Foo = Bar or Bar /= Baz " "or Baz'Valid = False"
+        )[0]
         self.assertEqual(
             result,
             Or(
@@ -92,14 +92,14 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(result, Equal(Variable("Keystore_Message.Length"), Number(0)))
 
     def test_complex_expression(self) -> None:
-        expression = (
+        expr = (
             "Keystore_Message'Valid = False "
             "or Keystore_Message.Tag /= KEYSTORE_RESPONSE "
             "or Keystore_Message.Request /= KEYSTORE_REQUEST_PSK_IDENTITIES "
             "or (Keystore_Message.Length = 0 "
             "    and TLS_Handshake.PSK_DHE_KE not in Configuration.PSK_Key_Exchange_Modes)"
         )
-        result = FSMParser.condition().parseString(expression)[0]
+        result = FSMParser.condition().parseString(expr)[0]
         expected = Or(
             Equal(Valid(Variable("Keystore_Message")), FALSE),
             NotEqual(Variable("Keystore_Message.Tag"), Variable("KEYSTORE_RESPONSE")),
@@ -115,3 +115,15 @@ class TestFSM(unittest.TestCase):
             ),
         )
         self.assertEqual(result, expected)
+
+    def test_existential_quantification(self) -> None:
+        result = FSMParser.condition().parseString("for some X in Y => X = 3")[0]
+        self.assertEqual(
+            result, ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Number(3)))
+        )
+
+    def test_universal_quantification(self) -> None:
+        result = FSMParser.condition().parseString("for all X in Y => X = Bar")[0]
+        self.assertEqual(
+            result, ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar")))
+        )
