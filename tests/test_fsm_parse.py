@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import And, Equal, NotEqual, Or, Variable
+from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Or, Variable
 from rflx.fsm_expression import Contains, NotContains, Valid
 from rflx.fsm_parser import FSMParser
 
@@ -46,5 +46,16 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(result, Contains(Variable("Foo"), Variable("Bar")))
 
     def test_not_in_operator(self) -> None:
-        result = FSMParser.condition().parseString("Foo not in Bar")[0]
-        self.assertEqual(result, NotContains(Variable("Foo"), Variable("Bar")))
+        result = FSMParser.condition().parseString('Foo not in Bar')[0]
+        self.assertEqual(result, NotContains(Variable('Foo'), Variable('Bar')))
+
+    def test_parenthesized_expression(self) -> None:
+        result = FSMParser.condition().parseString('Foo = True and (Bar = False or Baz = False)')[0]
+        self.assertEqual(result, And(Equal(Variable('Foo'), TRUE),
+                                     Or(Equal(Variable('Bar'), FALSE),
+                                        Equal(Variable('Baz'), FALSE))))
+
+    def test_parenthesized_expression2(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Valid and (Bar'Valid or Baz'Valid)")[0]
+        self.assertEqual(result, And(Valid(Variable('Foo')),
+                                     Or(Valid(Variable('Bar')), Valid(Variable('Baz')))))

@@ -1,6 +1,6 @@
 from typing import List
 
-from pyparsing import Forward, Keyword, Literal, StringEnd, Token, infixNotation, opAssoc
+from pyparsing import Keyword, Literal, StringEnd, Token, infixNotation, opAssoc
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
 from rflx.fsm_expression import Contains, NotContains, Valid
@@ -40,31 +40,26 @@ class FSMParser:
 
     @classmethod
     def expression(cls) -> Token:
+
         literal = Parser.boolean_literal()
         literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
 
         identifier = Parser.qualified_identifier()
-        identifier.setParseAction(lambda t: Variable("".join(t)))
+        identifier.setParseAction(lambda t: Variable(t[0]))
 
-        valid = identifier() + Literal("'") - Keyword("Valid")
+        valid = identifier() + Literal("'") - Keyword('Valid')
         valid.setParseAction(lambda t: Valid(t[0]))
 
-        expr = Forward()
-        simple_expr = literal | valid | identifier | expr
+        equation = infixNotation(literal | valid | identifier,
+                                 [(Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
+                                  (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
+                                  (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
+                                  (Keyword("not in"), 2, opAssoc.LEFT, cls.__parse_notin)])
 
-        expr <<= infixNotation(
-            simple_expr,
-            [
-                (Keyword("not in"), 2, opAssoc.LEFT, cls.__parse_notin),
-                (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
-                (Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
-                (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
-                (Keyword("and"), 2, opAssoc.LEFT, cls.__parse_conjunction),
-                (Keyword("or"), 2, opAssoc.LEFT, cls.__parse_disjunction),
-            ],
-        )
-
-        return expr
+        result = infixNotation(equation,
+                               [(Keyword('and'), 2, opAssoc.LEFT, cls.__parse_conjunction),
+                                (Keyword('or'), 2, opAssoc.LEFT, cls.__parse_disjunction)])
+        return result
 
     @classmethod
     def condition(cls) -> Token:
