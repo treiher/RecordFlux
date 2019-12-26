@@ -21,12 +21,12 @@ class FSMParser:
     @classmethod
     def __parse_conjunction(cls, tokens: List[List[Expr]]) -> Expr:
         t = tokens[0]
-        return And(t[0], t[2])
+        return And(*t)
 
     @classmethod
     def __parse_disjunction(cls, tokens: List[List[Expr]]) -> Expr:
         t = tokens[0]
-        return Or(t[0], t[2])
+        return Or(*t)
 
     @classmethod
     def __parse_in(cls, tokens: List[List[Expr]]) -> Expr:
@@ -45,20 +45,28 @@ class FSMParser:
         literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
 
         identifier = Parser.qualified_identifier()
-        identifier.setParseAction(lambda t: Variable(t[0]))
+        identifier.setParseAction(lambda t: Variable(".".join(t)))
 
-        valid = identifier() + Literal("'") - Keyword('Valid')
+        valid = identifier() + Literal("'") - Keyword("Valid")
         valid.setParseAction(lambda t: Valid(t[0]))
 
-        equation = infixNotation(literal | valid | identifier,
-                                 [(Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
-                                  (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
-                                  (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
-                                  (Keyword("not in"), 2, opAssoc.LEFT, cls.__parse_notin)])
+        equation = infixNotation(
+            Parser.numeric_literal() | literal | valid | identifier,
+            [
+                (Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
+                (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
+                (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
+                (Keyword("not in"), 2, opAssoc.LEFT, cls.__parse_notin),
+            ],
+        )
 
-        result = infixNotation(equation,
-                               [(Keyword('and'), 2, opAssoc.LEFT, cls.__parse_conjunction),
-                                (Keyword('or'), 2, opAssoc.LEFT, cls.__parse_disjunction)])
+        result = infixNotation(
+            equation,
+            [
+                (Keyword("and").suppress(), 2, opAssoc.LEFT, cls.__parse_conjunction),
+                (Keyword("or").suppress(), 2, opAssoc.LEFT, cls.__parse_disjunction),
+            ],
+        )
         return result
 
     @classmethod

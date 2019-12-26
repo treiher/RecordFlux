@@ -192,8 +192,8 @@ class Parser:
 
     @classmethod
     def qualified_identifier(cls) -> Token:
-        return (Optional(cls.identifier() + Literal(".")) - cls.identifier()).setParseAction(
-            lambda t: "".join(t.asList())
+        return (delimitedList(cls.identifier(), delim=".")).setParseAction(
+            lambda t: ".".join(t.asList())
         )
 
     @classmethod
