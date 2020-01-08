@@ -38,6 +38,8 @@ def main(argv: List[str]) -> Union[int, str]:
     parser_generate.add_argument(
         "-d", "--directory", help="output directory", default=".", type=str
     )
+    parser_generate.add_argument('-o', '--output', type=str,
+                                 help='generate a dummy output file for the first input file')
     parser_generate.add_argument(
         "files", metavar="FILE", type=str, nargs="*", help="specification file"
     )
@@ -105,7 +107,10 @@ def generate(args: argparse.Namespace) -> None:
     generator.generate(messages, refinements)
     written_files = generator.write_units(directory)
     written_files += generator.write_library_files(directory)
-    print("OK")
+    if args.output:
+        directory.joinpath(args.output).touch(exist_ok=True)
+        written_files.append(args.output)
+    print('OK')
 
     for f in written_files:
         print(f"Created {f}")
