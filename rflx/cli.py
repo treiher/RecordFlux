@@ -46,6 +46,8 @@ def main(argv: List[str]) -> Union[int, str]:
     parser_generate.add_argument(
         "-d", "--directory", help="output directory", default=".", type=str
     )
+    parser_generate.add_argument('-o', '--output', type=str,
+                                 help='generate a dummy output file for the first input file')
     parser_generate.add_argument(
         "-t",
         "--generate-top-level-package",
@@ -115,11 +117,12 @@ def generate(args: argparse.Namespace) -> None:
 
     model = parse(args.files)
     generator.generate(model)
-
     generator.write_units(directory)
     generator.write_library_files(directory)
     if args.prefix == DEFAULT_PREFIX or args.generate_top_level_package:
         generator.write_top_level_package(directory)
+    if args.output:
+        directory.joinpath(args.output).touch(exist_ok=True)
 
 
 def parse(files: List) -> Model:
