@@ -1,7 +1,7 @@
 import unittest
 
 from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Number, Or, Variable
-from rflx.fsm_expression import Contains, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
 from rflx.fsm_parser import FSMParser
 
 
@@ -127,3 +127,28 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(
             result, ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar")))
         )
+
+    def test_type_conversion_simple(self) -> None:
+        expr = "Foo (Bar) = 5"
+        result = FSMParser.condition().parseString(expr)[0]
+        expected = Equal(Convert(Variable("Bar"), Variable("Foo")), Number(5))
+        self.assertEqual(result, expected)
+
+    def test_type_conversion(self) -> None:
+        expr = "TLS_Handshake.Supported_Versions (E.Data) = 5"
+        result = FSMParser.condition().parseString(expr)[0]
+        expected = Equal(
+            Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), Number(5)
+        )
+        self.assertEqual(result, expected)
+
+    def test_use_type_conversion(self) -> None:
+        expr = "GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions"
+        result = FSMParser.condition().parseString(expr)[0]
+        expected = NotContains(
+            Variable("GreenTLS.TLS_1_3"),
+            Field(
+                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), "Version"
+            ),
+        )
+        self.assertEqual(result, expected)

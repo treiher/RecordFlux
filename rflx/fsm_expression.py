@@ -17,14 +17,14 @@ class Quantifier(Expr):
     def __repr__(self) -> str:
         return f"for {self.symbol} {self.__quantifier} in {self.__iterable} => {self.__predicate}"
 
-    def __neg__(self) -> "Expr":
+    def __neg__(self) -> Expr:
         raise NotImplementedError
 
     @property
     def precedence(self) -> Precedence:
         raise NotImplementedError
 
-    def simplified(self) -> "Expr":
+    def simplified(self) -> Expr:
         raise NotImplementedError
 
     def z3expr(self) -> z3.ExprRef:
@@ -34,14 +34,14 @@ class Quantifier(Expr):
 class ForSome(Quantifier):
     symbol: str = "some"
 
-    def __neg__(self) -> "Expr":
+    def __neg__(self) -> Expr:
         raise NotImplementedError
 
     @property
     def precedence(self) -> Precedence:
         raise NotImplementedError
 
-    def simplified(self) -> "Expr":
+    def simplified(self) -> Expr:
         raise NotImplementedError
 
     def z3expr(self) -> z3.ExprRef:
@@ -51,14 +51,14 @@ class ForSome(Quantifier):
 class ForAll(Quantifier):
     symbol: str = "all"
 
-    def __neg__(self) -> "Expr":
+    def __neg__(self) -> Expr:
         raise NotImplementedError
 
     @property
     def precedence(self) -> Precedence:
         raise NotImplementedError
 
-    def simplified(self) -> "Expr":
+    def simplified(self) -> Expr:
         raise NotImplementedError
 
     def z3expr(self) -> z3.ExprRef:
@@ -92,6 +92,50 @@ class NotContains(Relation):
     @property
     def precedence(self) -> Precedence:
         return Precedence.set_operator
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class Convert(Expr):
+    def __init__(self, expression: Expr, target: Variable) -> None:
+        self.__expression = expression
+        self.__type = target
+
+    def __repr__(self) -> str:
+        return f"{self.__type} ({self.__expression})"
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def simplified(self) -> Expr:
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class Field(Expr):
+    def __init__(self, expression: Expr, field: str) -> None:
+        self.__expression = expression
+        self.__field = field
+
+    def __repr__(self) -> str:
+        return f"{self.__expression}.{self.__field}"
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def simplified(self) -> Expr:
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError

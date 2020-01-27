@@ -1,9 +1,19 @@
 from typing import List
 
-from pyparsing import Forward, Keyword, Literal, StringEnd, Token, infixNotation, oneOf, opAssoc
+from pyparsing import (
+    Forward,
+    Keyword,
+    Literal,
+    StringEnd,
+    Suppress,
+    Token,
+    infixNotation,
+    oneOf,
+    opAssoc,
+)
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
-from rflx.fsm_expression import Contains, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import Contains, Convert, ForAll, ForSome, NotContains, Valid
 from rflx.parser.grammar import boolean_literal, numeric_literal, qualified_identifier
 
 
@@ -47,6 +57,12 @@ class FSMParser:
         return ForSome(tokens[1], tokens[2], tokens[3])
 
     @classmethod
+    def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
+        if not isinstance(tokens[1], Variable):
+            raise TypeError("target not of type Variable")
+        return Convert(tokens[0], tokens[1])
+
+    @classmethod
     def expression(cls) -> Token:
         literal = boolean_literal()
         literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
@@ -70,7 +86,11 @@ class FSMParser:
         )
         quantifier.setParseAction(cls.__parse_quantifier)
 
-        atom = numeric_literal() | literal | quantifier | valid | identifier
+        lpar, rpar = map(Suppress, "()")
+        conversion = identifier + lpar + identifier + rpar
+        conversion.setParseAction(cls.__parse_conversion)
+
+        atom = numeric_literal() | literal | quantifier | conversion | valid | identifier
 
         expression <<= infixNotation(
             atom,
