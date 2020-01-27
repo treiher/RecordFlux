@@ -1,7 +1,6 @@
 from typing import Any, Dict, Iterable, List, Optional
 
 import yaml
-from pyparsing import Keyword
 
 from rflx.expression import TRUE, Expr
 from rflx.fsm_parser import FSMParser
