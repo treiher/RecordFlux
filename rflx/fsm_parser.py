@@ -13,8 +13,13 @@ from pyparsing import (
 )
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
-from rflx.fsm_expression import Contains, Convert, ForAll, ForSome, NotContains, Valid
-from rflx.parser.grammar import boolean_literal, numeric_literal, qualified_identifier
+from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
+from rflx.parser.grammar import (
+    boolean_literal,
+    numeric_literal,
+    qualified_identifier,
+    unqualified_identifier,
+)
 
 
 class FSMParser:
@@ -90,7 +95,10 @@ class FSMParser:
         conversion = identifier + lpar + identifier + rpar
         conversion.setParseAction(cls.__parse_conversion)
 
-        atom = numeric_literal() | literal | quantifier | conversion | valid | identifier
+        field = conversion + Literal(".").suppress() - unqualified_identifier()
+        field.setParseAction(lambda t: Field(t[0], t[1]))
+
+        atom = numeric_literal() | literal | quantifier | field | conversion | valid | identifier
 
         expression <<= infixNotation(
             atom,

@@ -135,7 +135,7 @@ class Field(Expr):
 
     @property
     def precedence(self) -> Precedence:
-        raise NotImplementedError
+        return Precedence.undefined
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
