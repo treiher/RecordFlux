@@ -1,6 +1,7 @@
 from typing import List
 
 from pyparsing import (
+    Combine,
     Forward,
     Keyword,
     Literal,
@@ -13,7 +14,7 @@ from pyparsing import (
 )
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
-from rflx.fsm_expression import Contains, Convert, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
 from rflx.parser import Parser
 
 
@@ -91,10 +92,14 @@ class FSMParser:
         conversion = identifier + lpar + identifier + rpar
         conversion.setParseAction(cls.__parse_conversion)
 
+        field = conversion + Literal(".").suppress() - Parser.identifier()
+        field.setParseAction(lambda t: Field(t[0], t[1]))
+
         atom = (
             Parser.numeric_literal()
             | boolean_literal
             | quantifier
+            | field
             | conversion
             | valid
             | identifier

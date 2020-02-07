@@ -148,7 +148,7 @@ class TestFSM(unittest.TestCase):
         expected = NotContains(
             Variable("GreenTLS.TLS_1_3"),
             Field(
-                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), "Version"
+                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), "Versions"
             ),
         )
         self.assertEqual(result, expected)
