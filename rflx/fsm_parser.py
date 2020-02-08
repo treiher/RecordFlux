@@ -1,7 +1,6 @@
 from typing import List
 
 from pyparsing import (
-    Combine,
     Forward,
     Keyword,
     Literal,
@@ -14,7 +13,16 @@ from pyparsing import (
 )
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
-from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import (
+    Contains,
+    Convert,
+    Field,
+    ForAll,
+    ForSome,
+    NotContains,
+    Present,
+    Valid,
+)
 from rflx.parser import Parser
 
 
@@ -61,6 +69,8 @@ class FSMParser:
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[1], Variable):
             raise TypeError("target not of type Variable")
+        if not isinstance(tokens[0], Variable):
+            raise TypeError("source not of type Variable")
         return Convert(tokens[1], tokens[0])
 
     @classmethod
@@ -72,8 +82,8 @@ class FSMParser:
         identifier = Parser.qualified_identifier()
         identifier.setParseAction(lambda t: Variable(".".join(t)))
 
-        valid = identifier() + Literal("'") - Keyword("Valid")
-        valid.setParseAction(lambda t: Valid(t[0]))
+        attribute = identifier() + Literal("'") - (Keyword("Valid") | Keyword("Present"))
+        attribute.setParseAction(lambda t: Valid(t[0]) if t[2] == "Valid" else Present(t[0]))
 
         expression = Forward()
 
@@ -101,7 +111,7 @@ class FSMParser:
             | quantifier
             | field
             | conversion
-            | valid
+            | attribute
             | identifier
         )
 

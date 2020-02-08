@@ -1,11 +1,20 @@
 import unittest
 
 from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Number, Or, Variable
-from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import (
+    Contains,
+    Convert,
+    Field,
+    ForAll,
+    ForSome,
+    NotContains,
+    Present,
+    Valid,
+)
 from rflx.fsm_parser import FSMParser
 
 
-class TestFSM(unittest.TestCase):
+class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
 
@@ -123,7 +132,11 @@ class TestFSM(unittest.TestCase):
         )
 
     def test_complex_existential_quantification(self) -> None:
-        expr = "for some E in Server_Hello_Message.Extensions => (E.Tag = TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS and (GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions))"
+        expr = (
+            "for some E in Server_Hello_Message.Extensions => "
+            "(E.Tag = TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS and "
+            "(GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions))"
+        )
         result = FSMParser.condition().parseString(expr)[0]
         expected = ForSome(
             Variable("E"),
@@ -172,3 +185,11 @@ class TestFSM(unittest.TestCase):
             ),
         )
         self.assertEqual(result, expected)
+
+    def test_present(self) -> None:
+        result = FSMParser.condition().parseString("Something'Present")[0]
+        self.assertEqual(result, Present(Variable("Something")))
+
+    def test_conjunction_present(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Present and Bar'Present")[0]
+        self.assertEqual(result, And(Present(Variable("Foo")), Present(Variable("Bar"))))
