@@ -115,6 +115,7 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: List[StateMachine] = []
 
+    # pylint: disable=too-many-locals
     def __parse(self, name: str, doc: Dict[str, Any]) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
@@ -149,12 +150,12 @@ class FSM:
                     if "condition" in t:
                         try:
                             condition = FSMParser.condition().parseString(t["condition"])[0]
-                        except ParseFatalException:
+                        except ParseFatalException as e:
                             sname = s["name"]
                             tname = t["target"]
                             raise ModelError(
                                 f"error parsing condition {index} from state "
-                                f'"{sname}" to "{tname}"'
+                                f'"{sname}" to "{tname}" ({e})'
                             )
                     else:
                         condition = TRUE
