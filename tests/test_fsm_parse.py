@@ -122,6 +122,25 @@ class TestFSM(unittest.TestCase):
             result, ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Number(3)))
         )
 
+    def test_complex_existential_quantification(self) -> None:
+        expr = "for some E in Server_Hello_Message.Extensions => (E.Tag = TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS and (GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions))"
+        result = FSMParser.condition().parseString(expr)[0]
+        expected = ForSome(
+            Variable("E"),
+            Variable("Server_Hello_Message.Extensions"),
+            And(
+                Equal(Variable("E.Tag"), Variable("TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS")),
+                NotContains(
+                    Variable("GreenTLS.TLS_1_3"),
+                    Field(
+                        Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")),
+                        "Versions",
+                    ),
+                ),
+            ),
+        )
+        self.assertEqual(result, expected, msg=f"\nRESULT:\n{result}\nEXPECTED:\n{expected}\n")
+
     def test_universal_quantification(self) -> None:
         result = FSMParser.condition().parseString("for all X in Y => X = Bar")[0]
         self.assertEqual(
@@ -148,7 +167,8 @@ class TestFSM(unittest.TestCase):
         expected = NotContains(
             Variable("GreenTLS.TLS_1_3"),
             Field(
-                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), "Versions"
+                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")),
+                "Versions",
             ),
         )
         self.assertEqual(result, expected)
