@@ -5,7 +5,7 @@ from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotCo
 from rflx.fsm_parser import FSMParser
 
 
-class TestFSM(unittest.TestCase):
+class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
 
@@ -121,6 +121,29 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(
             result, ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Number(3)))
         )
+
+    def test_complex_existential_quantification(self) -> None:
+        expr = (
+            "for some E in Server_Hello_Message.Extensions => "
+            "(E.Tag = TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS and "
+            "(GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions))"
+        )
+        result = FSMParser.condition().parseString(expr)[0]
+        expected = ForSome(
+            Variable("E"),
+            Variable("Server_Hello_Message.Extensions"),
+            And(
+                Equal(Variable("E.Tag"), Variable("TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS")),
+                NotContains(
+                    Variable("GreenTLS.TLS_1_3"),
+                    Field(
+                        Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")),
+                        "Versions",
+                    ),
+                ),
+            ),
+        )
+        self.assertEqual(result, expected, msg=f"\nRESULT:\n{result}\nEXPECTED:\n{expected}\n")
 
     def test_universal_quantification(self) -> None:
         result = FSMParser.condition().parseString("for all X in Y => X = Bar")[0]
