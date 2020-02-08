@@ -148,12 +148,12 @@ class FSM:
                     if "condition" in t:
                         try:
                             condition = FSMParser.condition().parseString(t["condition"])[0]
-                        except Exception:
+                        except Exception as e:
                             sname = s["name"]
                             tname = t["target"]
                             raise ModelError(
                                 f"error parsing condition {index} from state "
-                                f'"{sname}" to "{tname}"'
+                                f'"{sname}" to "{tname}" ({e})'
                             )
                     else:
                         condition = TRUE
