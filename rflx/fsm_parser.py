@@ -13,7 +13,16 @@ from pyparsing import (
 )
 
 from rflx.expression import FALSE, TRUE, And, Equal, Expr, NotEqual, Or, Variable
-from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import (
+    Contains,
+    Convert,
+    Field,
+    ForAll,
+    ForSome,
+    NotContains,
+    Present,
+    Valid,
+)
 from rflx.parser.grammar import (
     boolean_literal,
     numeric_literal,
@@ -65,7 +74,9 @@ class FSMParser:
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[1], Variable):
             raise TypeError("target not of type Variable")
-        return Convert(tokens[0], tokens[1])
+        if not isinstance(tokens[0], Variable):
+            raise TypeError("source not of type Variable")
+        return Convert(tokens[1], tokens[0])
 
     @classmethod
     def expression(cls) -> Token:
@@ -75,8 +86,8 @@ class FSMParser:
         identifier = qualified_identifier()
         identifier.setParseAction(lambda t: Variable("".join(t)))
 
-        valid = identifier() + Literal("'") - Keyword("Valid")
-        valid.setParseAction(lambda t: Valid(t[0]))
+        attribute = identifier() + Literal("'") - (Keyword("Valid") | Keyword("Present"))
+        attribute.setParseAction(lambda t: Valid(t[0]) if t[2] == "Valid" else Present(t[0]))
 
         expression = Forward()
 
@@ -98,7 +109,9 @@ class FSMParser:
         field = conversion + Literal(".").suppress() - unqualified_identifier()
         field.setParseAction(lambda t: Field(t[0], t[1]))
 
-        atom = numeric_literal() | literal | quantifier | field | conversion | valid | identifier
+        atom = (
+            numeric_literal() | literal | quantifier | field | conversion | attribute | identifier
+        )
 
         expression <<= infixNotation(
             atom,

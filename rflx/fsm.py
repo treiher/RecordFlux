@@ -115,8 +115,7 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: List[StateMachine] = []
 
-    # pylint: disable=too-many-locals
-    def __parse(self, name: str, doc: Dict[str, Any]) -> None:
+    def __parse(self, name: str, doc: Dict[str, Any]) -> None:  # pylint: disable=too-many-locals
         if "initial" not in doc:
             raise ModelError("missing initial state")
         if "final" not in doc:

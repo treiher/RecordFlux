@@ -1,7 +1,16 @@
 import unittest
 
 from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Number, Or, Variable
-from rflx.fsm_expression import Contains, Convert, Field, ForAll, ForSome, NotContains, Valid
+from rflx.fsm_expression import (
+    Contains,
+    Convert,
+    Field,
+    ForAll,
+    ForSome,
+    NotContains,
+    Present,
+    Valid,
+)
 from rflx.fsm_parser import FSMParser
 
 
@@ -176,3 +185,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ),
         )
         self.assertEqual(result, expected)
+
+    def test_present(self) -> None:
+        result = FSMParser.condition().parseString("Something'Present")[0]
+        self.assertEqual(result, Present(Variable("Something")))
+
+    def test_conjunction_present(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Present and Bar'Present")[0]
+        self.assertEqual(result, And(Present(Variable("Foo")), Present(Variable("Bar"))))
