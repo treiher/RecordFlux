@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import FALSE, TRUE, And, Equal, NotEqual, Number, Or, Variable
+from rflx.expression import FALSE, TRUE, And, Equal, Length, Less, NotEqual, Number, Or, Variable
 from rflx.fsm_expression import (
     Contains,
     Convert,
@@ -193,3 +193,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_conjunction_present(self) -> None:
         result = FSMParser.condition().parseString("Foo'Present and Bar'Present")[0]
         self.assertEqual(result, And(Present(Variable("Foo")), Present(Variable("Bar"))))
+
+    def test_length_lt(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Length < 100")[0]
+        self.assertEqual(result, Less(Length(Variable("Foo")), Number(100)))
+
+    def test_field_length_lt(self) -> None:
+        result = FSMParser.condition().parseString("Bar (Foo).Fld'Length < 100")[0]
+        self.assertEqual(
+            result,
+            Less(Length(Field(Convert(Variable("Foo"), Variable("Bar")), "Fld")), Number(100)),
+        )
