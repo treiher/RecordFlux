@@ -8,6 +8,7 @@ from rflx.fsm_expression import (
     Field,
     ForAll,
     ForSome,
+    Head,
     NotContains,
     Present,
     Valid,
@@ -215,5 +216,25 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 Variable("List"),
                 Variable("E.Bar"),
                 Equal(Variable("E.Tag"), Variable("Foo")),
+            ),
+        )
+
+    def test_head_attribute(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Head")[0]
+        self.assertEqual(result, Head(Variable("Foo")))
+
+    def test_head_attribute_comprehension(self) -> None:
+        result = FSMParser.condition().parseString(
+            "[for E in List => E.Bar when E.Tag = Foo]'Head"
+        )[0]
+        self.assertEqual(
+            result,
+            Head(
+                Comprehension(
+                    Variable("E"),
+                    Variable("List"),
+                    Variable("E.Bar"),
+                    Equal(Variable("E.Tag"), Variable("Foo")),
+                )
             ),
         )
