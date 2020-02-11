@@ -49,7 +49,7 @@ class ForSome(Quantifier):
 
     @property
     def precedence(self) -> Precedence:
-        raise NotImplementedError
+        return Precedence.undefined
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
         raise NotImplementedError

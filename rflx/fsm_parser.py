@@ -95,10 +95,8 @@ class FSMParser:
 
     @classmethod
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[1], Variable):
-            raise TypeError("target not of type Variable")
         if not isinstance(tokens[0], Variable):
-            raise TypeError("source not of type Variable")
+            raise TypeError("target not of type Variable")
         return Convert(tokens[1], tokens[0])
 
     @classmethod
@@ -114,21 +112,21 @@ class FSMParser:
             Keyword("Valid") | Keyword("Present") | Keyword("Length") | Keyword("Head")
         )
 
+        expression = Forward()
+
         lpar, rpar = map(Suppress, "()")
-        conversion = identifier + lpar + identifier + rpar
+        conversion = identifier + lpar + expression + rpar
         conversion.setParseAction(cls.__parse_conversion)
 
         field = conversion + Literal(".").suppress() - Parser.identifier()
         field.setParseAction(lambda t: Field(t[0], t[1]))
-
-        expression = Forward()
 
         quantifier = (
             Keyword("for").suppress()
             - oneOf(["all", "some"])
             + identifier
             - Keyword("in").suppress()
-            + identifier
+            + expression
             - Keyword("=>").suppress()
             + expression
         )
