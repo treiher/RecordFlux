@@ -13,6 +13,10 @@ class Present(Attribute):
     pass
 
 
+class Head(Attribute):
+    pass
+
+
 class Quantifier(Expr):
     def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
@@ -148,14 +152,16 @@ class Field(Expr):
 
 
 class Comprehension(Expr):
-    def __init__(self, iterator: Variable, array : Expr, selector : Expr, condition : Expr) -> None:
+    def __init__(self, iterator: Variable, array: Expr, selector: Expr, condition: Expr) -> None:
         self.__iterator = iterator
         self.__array = array
         self.__selector = selector
         self.__condition = condition
 
     def __repr__(self) -> str:
-        return f"[for {self.__iterator} in {self.__array} => {self.__selector} when {self.__condition}"
+        return (
+            f"[for {self.__iterator} in {self.__array} => {self.__selector} when {self.__condition}"
+        )
 
     def __neg__(self) -> Expr:
         raise NotImplementedError
