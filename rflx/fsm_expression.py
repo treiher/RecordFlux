@@ -159,7 +159,10 @@ class Comprehension(Expr):
         self.__condition = condition
 
     def __repr__(self) -> str:
-        return f"[for {self.__iterator} in {self.__array} => {self.__selector} when {self.__condition}]"
+        return (
+            f"[for {self.__iterator} in {self.__array} => "
+            f"{self.__selector} when {self.__condition}]"
+        )
 
     def __neg__(self) -> Expr:
         raise NotImplementedError

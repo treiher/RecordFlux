@@ -41,6 +41,7 @@ from rflx.fsm_expression import (
     Valid,
 )
 from rflx.parser import Parser
+from rflx.statement import Assignment
 
 
 def parse_attribute(string: str, location: int, tokens: ParseResults) -> Attribute:
@@ -117,13 +118,16 @@ class FSMParser:
         return Convert(tokens[1], tokens[0])
 
     @classmethod
+    def __identifier(cls) -> Token:
+        identifier = Parser.qualified_identifier()
+        identifier.setParseAction(lambda t: Variable(".".join(t)))
+        return identifier
+
+    @classmethod
     def expression(cls) -> Token:
 
         boolean_literal = Parser.boolean_literal()
         boolean_literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
-
-        identifier = Parser.qualified_identifier()
-        identifier.setParseAction(lambda t: Variable(".".join(t)))
 
         attribute_designator = (
             Keyword("Valid") | Keyword("Present") | Keyword("Length") | Keyword("Head")
@@ -132,7 +136,7 @@ class FSMParser:
         expression = Forward()
 
         lpar, rpar = map(Suppress, "()")
-        conversion = identifier + lpar + expression + rpar
+        conversion = cls.__identifier() + lpar + expression + rpar
         conversion.setParseAction(cls.__parse_conversion)
 
         field = conversion + Literal(".").suppress() - Parser.identifier()
@@ -141,7 +145,7 @@ class FSMParser:
         quantifier = (
             Keyword("for").suppress()
             - oneOf(["all", "some"])
-            + identifier
+            + cls.__identifier()
             - Keyword("in").suppress()
             + expression
             - Keyword("=>").suppress()
@@ -152,7 +156,7 @@ class FSMParser:
         comprehension = (
             Literal("[").suppress()
             - Keyword("for").suppress()
-            + identifier
+            + cls.__identifier()
             - Keyword("in").suppress()
             + expression
             - Keyword("=>").suppress()
@@ -164,7 +168,7 @@ class FSMParser:
         comprehension.setParseAction(cls.__parse_comprehension)
 
         attribute = (
-            (field | conversion | identifier | comprehension)
+            (field | conversion | cls.__identifier() | comprehension)
             + Literal("'").suppress()
             - attribute_designator
         )
@@ -182,7 +186,7 @@ class FSMParser:
             | field
             | comprehension
             | conversion
-            | identifier
+            | cls.__identifier()
         )
 
         expression <<= infixNotation(
@@ -205,3 +209,9 @@ class FSMParser:
     @classmethod
     def condition(cls) -> Token:
         return cls.expression() + StringEnd()
+
+    @classmethod
+    def action(cls) -> Token:
+        action = cls.__identifier() + Keyword(":=").suppress() + cls.expression() + StringEnd()
+        action.setParseAction(lambda t: Assignment(t[0], t[1]))
+        return action
