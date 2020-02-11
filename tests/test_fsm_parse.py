@@ -1,6 +1,18 @@
 import unittest
 
-from rflx.expression import FALSE, TRUE, And, Equal, Length, Less, NotEqual, Number, Or, Variable
+from rflx.expression import (
+    FALSE,
+    TRUE,
+    And,
+    Equal,
+    Greater,
+    Length,
+    Less,
+    NotEqual,
+    Number,
+    Or,
+    Variable,
+)
 from rflx.fsm_expression import (
     Comprehension,
     Contains,
@@ -199,6 +211,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_length_lt(self) -> None:
         result = FSMParser.condition().parseString("Foo'Length < 100")[0]
         self.assertEqual(result, Less(Length(Variable("Foo")), Number(100)))
+
+    def test_gt(self) -> None:
+        result = FSMParser.condition().parseString("Server_Name_Extension.Data_Length > 0")[0]
+        self.assertEqual(result, Greater(Variable("Server_Name_Extension.Data_Length"), Number(0)))
 
     def test_field_length_lt(self) -> None:
         result = FSMParser.condition().parseString("Bar (Foo).Fld'Length < 100")[0]
