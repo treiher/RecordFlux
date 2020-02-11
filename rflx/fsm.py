@@ -6,6 +6,7 @@ from pyparsing import ParseFatalException
 from rflx.expression import TRUE, Expr
 from rflx.fsm_parser import FSMParser
 from rflx.model import Base, ModelError
+from rflx.statement import Statement
 
 
 class StateName(Base):
@@ -28,9 +29,15 @@ class Transition(Base):
 
 
 class State(Base):
-    def __init__(self, name: StateName, transitions: Optional[Iterable[Transition]] = None):
+    def __init__(
+        self,
+        name: StateName,
+        transitions: Optional[Iterable[Transition]] = None,
+        actions: Optional[Iterable[Statement]] = None,
+    ):
         self.__name = name
         self.__transitions = transitions or []
+        self.__actions = actions or []
 
     @property
     def name(self) -> StateName:
@@ -115,6 +122,31 @@ class FSM:
     def __init__(self) -> None:
         self.__fsms: List[StateMachine] = []
 
+    @classmethod
+    def __parse_transitions(cls, state: Dict) -> List[Transition]:
+        transitions: List[Transition] = []
+        sname = state["name"]
+        if "transitions" in state:
+            for index, t in enumerate(state["transitions"]):
+                rest = t.keys() - ["condition", "target", "doc"]
+                if rest:
+                    elements = ", ".join(sorted(rest))
+                    raise ModelError(
+                        f"unexpected elements [{elements}] in transition {index} state {sname}"
+                    )
+                condition = TRUE
+                if "condition" in t:
+                    try:
+                        condition = FSMParser.condition().parseString(t["condition"])[0]
+                    except ParseFatalException as e:
+                        tname = t["target"]
+                        raise ModelError(
+                            f"error parsing condition {index} from state "
+                            f'"{sname}" to "{tname}" ({e})'
+                        )
+                transitions.append(Transition(target=StateName(t["target"]), condition=condition))
+        return transitions
+
     def __parse(self, name: str, doc: Dict[str, Any]) -> None:  # pylint: disable=too-many-locals
         if "initial" not in doc:
             raise ModelError("missing initial state")
@@ -129,6 +161,7 @@ class FSM:
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
 
+        error: List[str] = []
         states: List[State] = []
         for s in doc["states"]:
             state = s["name"]
@@ -137,31 +170,23 @@ class FSM:
                 elements = ", ".join(sorted(rest))
                 raise ModelError(f"unexpected elements [{elements}] in state {state}")
             transitions: List[Transition] = []
-            if "transitions" in s:
-                for index, t in enumerate(s["transitions"]):
-                    rest = t.keys() - ["condition", "target", "doc"]
-                    if rest:
-                        elements = ", ".join(sorted(rest))
-                        raise ModelError(
-                            f"unexpected elements [{elements}] in transition {index}"
-                            f" state {state}"
-                        )
-                    if "condition" in t:
-                        try:
-                            condition = FSMParser.condition().parseString(t["condition"])[0]
-                        except ParseFatalException as e:
-                            sname = s["name"]
-                            tname = t["target"]
-                            raise ModelError(
-                                f"error parsing condition {index} from state "
-                                f'"{sname}" to "{tname}" ({e})'
-                            )
-                    else:
-                        condition = TRUE
-                    transitions.append(
-                        Transition(target=StateName(t["target"]), condition=condition)
-                    )
-            states.append(State(name=StateName(s["name"]), transitions=transitions))
+            try:
+                transitions = self.__parse_transitions(s)
+            except Exception as e:  # pylint: disable=broad-except
+                error.append(f"{e}")
+            actions: List[Statement] = []
+            if "actions" in s and s["actions"]:
+                for index, a in enumerate(s["actions"]):
+                    try:
+                        actions.append(FSMParser.action().parseString(a)[0])
+                    except Exception as e:  # pylint: disable=broad-except
+                        sname = s["name"]
+                        error.append(f"error parsing action {index} of state {sname} ({e})")
+            states.append(
+                State(name=StateName(s["name"]), transitions=transitions, actions=actions)
+            )
+        if error:
+            raise ModelError("\n   ".join(error))
 
         fsm = StateMachine(
             name=name,
