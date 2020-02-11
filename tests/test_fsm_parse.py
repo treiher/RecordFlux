@@ -238,3 +238,26 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 )
             ),
         )
+
+    def test_list_head_field_simple(self) -> None:
+        result = FSMParser.condition().parseString("Foo'Head.Data")[0]
+        self.assertEqual(result, Field(Head(Variable("Foo")), "Data"))
+
+    def test_list_head_field(self) -> None:
+        result = FSMParser.condition().parseString(
+            "[for E in List => E.Bar when E.Tag = Foo]'Head.Data"
+        )[0]
+        self.assertEqual(
+            result,
+            Field(
+                Head(
+                    Comprehension(
+                        Variable("E"),
+                        Variable("List"),
+                        Variable("E.Bar"),
+                        Equal(Variable("E.Tag"), Variable("Foo")),
+                    )
+                ),
+                "Data",
+            ),
+        )

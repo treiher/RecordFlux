@@ -32,13 +32,13 @@ from rflx.parser import Parser
 
 
 def parse_attribute(string: str, location: int, tokens: ParseResults) -> Attribute:
-    if tokens[2] == "Valid":
+    if tokens[1] == "Valid":
         return Valid(tokens[0])
-    if tokens[2] == "Present":
+    if tokens[1] == "Present":
         return Present(tokens[0])
-    if tokens[2] == "Length":
+    if tokens[1] == "Length":
         return Length(tokens[0])
-    if tokens[2] == "Head":
+    if tokens[1] == "Head":
         return Head(tokens[0])
     raise ParseFatalException(string, location, "unexpected attribute")
 
@@ -149,17 +149,23 @@ class FSMParser:
         comprehension.setParseAction(cls.__parse_comprehension)
 
         attribute = (
-            (field | conversion | identifier | comprehension) + Literal("'") - attribute_designator
+            (field | conversion | identifier | comprehension)
+            + Literal("'").suppress()
+            - attribute_designator
         )
         attribute.setParseAction(parse_attribute)
+
+        attribute_field = attribute + Literal(".").suppress() + Parser.qualified_identifier()
+        attribute_field.setParseAction(lambda t: Field(t[0], t[1]))
 
         atom = (
             Parser.numeric_literal()
             | boolean_literal
             | quantifier
+            | attribute_field
             | attribute
-            | comprehension
             | field
+            | comprehension
             | conversion
             | identifier
         )
