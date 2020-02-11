@@ -2,6 +2,7 @@ import unittest
 
 from rflx.expression import FALSE, TRUE, And, Equal, Length, Less, NotEqual, Number, Or, Variable
 from rflx.fsm_expression import (
+    Comprehension,
     Contains,
     Convert,
     Field,
@@ -203,4 +204,16 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(
             result,
             Less(Length(Field(Convert(Variable("Foo"), Variable("Bar")), "Fld")), Number(100)),
+        )
+
+    def test_list_comprehension(self) -> None:
+        result = FSMParser.condition().parseString("[for E in List => E.Bar when E.Tag = Foo]")[0]
+        self.assertEqual(
+            result,
+            Comprehension(
+                Variable("E"),
+                Variable("List"),
+                Variable("E.Bar"),
+                Equal(Variable("E.Tag"), Variable("Foo")),
+            ),
         )
