@@ -147,7 +147,7 @@ class FSM:
                 transitions.append(Transition(target=StateName(t["target"]), condition=condition))
         return transitions
 
-    def __parse(self, name: str, doc: Dict[str, Any]) -> None:  # pylint: disable=too-many-locals
+    def __parse(self, name: str, doc: Dict[str, Any]) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
         if "final" not in doc:
@@ -161,7 +161,6 @@ class FSM:
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
 
-        error: List[str] = []
         states: List[State] = []
         for s in doc["states"]:
             state = s["name"]
@@ -170,18 +169,15 @@ class FSM:
                 elements = ", ".join(sorted(rest))
                 raise ModelError(f"unexpected elements [{elements}] in state {state}")
             transitions: List[Transition] = []
-            try:
-                transitions = self.__parse_transitions(s)
-            except Exception as e:  # pylint: disable=broad-except
-                error.append(f"{e}")
+            transitions = self.__parse_transitions(s)
             actions: List[Statement] = []
             if "actions" in s and s["actions"]:
                 for index, a in enumerate(s["actions"]):
                     try:
                         actions.append(FSMParser.action().parseString(a)[0])
-                    except Exception as e:  # pylint: disable=broad-except
+                    except Exception as e:
                         sname = s["name"]
-                        error.append(f"error parsing action {index} of state {sname} ({e})")
+                        raise ModelError(f"error parsing action {index} of state {sname} ({e})")
             states.append(
                 State(name=StateName(s["name"]), transitions=transitions, actions=actions)
             )
@@ -193,8 +189,6 @@ class FSM:
             states=states,
         )
         self.__fsms.append(fsm)
-        if error:
-            raise ModelError("\n   ".join(error))
 
     def parse(self, name: str, filename: str) -> None:
         with open(filename, "r") as data:
