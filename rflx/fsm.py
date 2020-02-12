@@ -185,8 +185,6 @@ class FSM:
             states.append(
                 State(name=StateName(s["name"]), transitions=transitions, actions=actions)
             )
-        if error:
-            raise ModelError("\n   ".join(error))
 
         fsm = StateMachine(
             name=name,
@@ -195,6 +193,8 @@ class FSM:
             states=states,
         )
         self.__fsms.append(fsm)
+        if error:
+            raise ModelError("\n   ".join(error))
 
     def parse(self, name: str, filename: str) -> None:
         with open(filename, "r") as data:
