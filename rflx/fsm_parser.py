@@ -32,10 +32,10 @@ from rflx.fsm_expression import (
     Attribute,
     Comprehension,
     Contains,
-    Convert,
     Field,
     ForAll,
     ForSome,
+    FunctionCall,
     Head,
     MessageAggregate,
     NotContains,
@@ -114,10 +114,10 @@ class FSMParser:
         return Comprehension(tokens[0], tokens[1], tokens[2], tokens[3])
 
     @classmethod
-    def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
+    def __parse_function_call(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[0], Variable):
             raise TypeError("target not of type Variable")
-        return Convert(tokens[1], tokens[0])
+        return FunctionCall(tokens[0], tokens[1:])
 
     @classmethod
     def __identifier(cls) -> Token:
@@ -126,7 +126,7 @@ class FSMParser:
         return identifier
 
     @classmethod
-    def expression(cls) -> Token:
+    def expression(cls) -> Token:  # pylint: disable=too-many-locals
 
         boolean_literal = Parser.boolean_literal()
         boolean_literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
@@ -137,11 +137,13 @@ class FSMParser:
 
         expression = Forward()
 
-        lpar, rpar = map(Suppress, "()")
-        conversion = cls.__identifier() + lpar + expression + rpar
-        conversion.setParseAction(cls.__parse_conversion)
+        parameters = delimitedList(expression, delim=",")
 
-        field = conversion + Literal(".").suppress() - Parser.identifier()
+        lpar, rpar = map(Suppress, "()")
+        function_call = cls.__identifier() + lpar + parameters + rpar
+        function_call.setParseAction(cls.__parse_function_call)
+
+        field = function_call + Literal(".").suppress() - Parser.identifier()
         field.setParseAction(lambda t: Field(t[0], t[1]))
 
         quantifier = (
@@ -170,7 +172,7 @@ class FSMParser:
         comprehension.setParseAction(cls.__parse_comprehension)
 
         attribute = (
-            (field | conversion | cls.__identifier() | comprehension)
+            (field | function_call | cls.__identifier() | comprehension)
             + Literal("'").suppress()
             - attribute_designator
         )
@@ -197,7 +199,7 @@ class FSMParser:
             | attribute
             | field
             | comprehension
-            | conversion
+            | function_call
             | cls.__identifier()
         )
 

@@ -1,4 +1,4 @@
-from typing import Dict, Mapping
+from typing import Dict, List, Mapping
 
 import z3
 
@@ -107,13 +107,14 @@ class NotContains(Relation):
         raise NotImplementedError
 
 
-class Convert(Expr):
-    def __init__(self, expression: Expr, target: Variable) -> None:
-        self.__expression = expression
-        self.__type = target
+class FunctionCall(Expr):
+    def __init__(self, name: Variable, arguments: List[Expr]) -> None:
+        self.__name = name
+        self.__arguments = arguments
 
     def __repr__(self) -> str:
-        return f"{self.__type} ({self.__expression})"
+        arguments = ", ".join(["{a}" for a in self.__arguments])
+        return f"{self.__name} ({arguments})"
 
     def __neg__(self) -> Expr:
         raise NotImplementedError
