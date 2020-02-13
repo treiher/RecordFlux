@@ -1,4 +1,4 @@
-from typing import Mapping
+from typing import Dict, Mapping
 
 import z3
 
@@ -163,6 +163,29 @@ class Comprehension(Expr):
             f"[for {self.__iterator} in {self.__array} => "
             f"{self.__selector} when {self.__condition}]"
         )
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        return Precedence.undefined
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class MessageAggregate(Expr):
+    def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
+        self.__name = name
+        self.__data = data
+
+    def __repr__(self) -> str:
+        data = ", ".join(["{k} => {v}".format(k=k, v=self.__data[k]) for k in self.__data])
+        return f"{self.__name}'({data})"
 
     def __neg__(self) -> Expr:
         raise NotImplementedError

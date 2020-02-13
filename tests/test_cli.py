@@ -6,7 +6,7 @@ from rflx import cli
 from rflx.model import ModelError
 
 
-class TestCLI(TestCase):
+class TestCLI(TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
 

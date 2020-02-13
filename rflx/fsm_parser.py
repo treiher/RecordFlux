@@ -9,6 +9,7 @@ from pyparsing import (
     StringEnd,
     Suppress,
     Token,
+    delimitedList,
     infixNotation,
     oneOf,
     opAssoc,
@@ -36,6 +37,7 @@ from rflx.fsm_expression import (
     ForAll,
     ForSome,
     Head,
+    MessageAggregate,
     NotContains,
     Present,
     Valid,
@@ -174,6 +176,15 @@ class FSMParser:
         )
         attribute.setParseAction(parse_attribute)
 
+        components = delimitedList(
+            Parser.identifier() + Keyword("=>").suppress() + expression, delim=","
+        )
+        components.setParseAction(lambda t: dict(zip(t[0::2], t[1::2])))
+
+        aggregate = (
+            cls.__identifier() + Literal("'").suppress() + lpar + components + rpar
+        ).setParseAction(lambda t: MessageAggregate(t[0], t[1]))
+
         attribute_field = attribute + Literal(".").suppress() + Parser.qualified_identifier()
         attribute_field.setParseAction(lambda t: Field(t[0], t[1]))
 
@@ -181,6 +192,7 @@ class FSMParser:
             Parser.numeric_literal()
             | boolean_literal
             | quantifier
+            | aggregate
             | attribute_field
             | attribute
             | field
