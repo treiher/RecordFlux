@@ -16,10 +16,10 @@ from rflx.expression import (
 from rflx.fsm_expression import (
     Comprehension,
     Contains,
-    Convert,
     Field,
     ForAll,
     ForSome,
+    FunctionCall,
     Head,
     MessageAggregate,
     NotContains,
@@ -161,7 +161,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 NotContains(
                     Variable("GreenTLS.TLS_1_3"),
                     Field(
-                        Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")),
+                        FunctionCall(
+                            Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]
+                        ),
                         "Versions",
                     ),
                 ),
@@ -178,14 +180,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_type_conversion_simple(self) -> None:
         expr = "Foo (Bar) = 5"
         result = FSMParser.condition().parseString(expr)[0]
-        expected = Equal(Convert(Variable("Bar"), Variable("Foo")), Number(5))
+        expected = Equal(FunctionCall(Variable("Foo"), [Variable("Bar")]), Number(5))
         self.assertEqual(result, expected)
 
     def test_type_conversion(self) -> None:
         expr = "TLS_Handshake.Supported_Versions (E.Data) = 5"
         result = FSMParser.condition().parseString(expr)[0]
         expected = Equal(
-            Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")), Number(5)
+            FunctionCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
+            Number(5),
         )
         self.assertEqual(result, expected)
 
@@ -195,7 +198,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expected = NotContains(
             Variable("GreenTLS.TLS_1_3"),
             Field(
-                Convert(Variable("E.Data"), Variable("TLS_Handshake.Supported_Versions")),
+                FunctionCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
                 "Versions",
             ),
         )
@@ -221,7 +224,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         result = FSMParser.condition().parseString("Bar (Foo).Fld'Length < 100")[0]
         self.assertEqual(
             result,
-            Less(Length(Field(Convert(Variable("Foo"), Variable("Bar")), "Fld")), Number(100)),
+            Less(
+                Length(Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld")), Number(100)
+            ),
         )
 
     def test_list_comprehension(self) -> None:
@@ -289,22 +294,24 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ForSome(
                 Variable("S"),
                 Field(
-                    Convert(
-                        Field(
-                            Head(
-                                Comprehension(
-                                    Variable("E"),
-                                    Variable("Client_Hello_Message.Extensions"),
-                                    Variable("E"),
-                                    Equal(
-                                        Variable("E.Tag"),
-                                        Variable("TLS_Handshake.EXTENSION_KEY_SHARE"),
-                                    ),
-                                )
-                            ),
-                            "Data",
-                        ),
+                    FunctionCall(
                         Variable("TLS_Handshake.Key_Share_CH"),
+                        [
+                            Field(
+                                Head(
+                                    Comprehension(
+                                        Variable("E"),
+                                        Variable("Client_Hello_Message.Extensions"),
+                                        Variable("E"),
+                                        Equal(
+                                            Variable("E.Tag"),
+                                            Variable("TLS_Handshake.EXTENSION_KEY_SHARE"),
+                                        ),
+                                    )
+                                ),
+                                "Data",
+                            )
+                        ],
                     ),
                     "Shares",
                 ),
@@ -326,5 +333,18 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expected = MessageAggregate(
             Variable("Complex.Message"),
             {"Data1": Variable("Foo"), "Data2": Variable("Bar"), "Data3": Variable("Baz")},
+        )
+        self.assertEqual(result, expected)
+
+    def test_simple_function_call(self) -> None:
+        result = FSMParser.expression().parseString("Fun (Parameter)")[0]
+        expected = FunctionCall(Variable("Fun"), [Variable("Parameter")])
+        self.assertEqual(result, expected)
+
+    def test_complex_function_call(self) -> None:
+        result = FSMParser.expression().parseString("Complex_Function (Param1, Param2, Param3)")[0]
+        expected = FunctionCall(
+            Variable("Complex_Function"),
+            [Variable("Param1"), Variable("Param2"), Variable("Param3")],
         )
         self.assertEqual(result, expected)
