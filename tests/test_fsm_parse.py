@@ -21,6 +21,7 @@ from rflx.fsm_expression import (
     ForAll,
     ForSome,
     Head,
+    MessageAggregate,
     NotContains,
     Present,
     Valid,
@@ -310,5 +311,20 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 Equal(Variable("S.Group"), Variable("Selected_Group")),
             ),
             FALSE,
+        )
+        self.assertEqual(result, expected)
+
+    def test_simple_aggregate(self) -> None:
+        result = FSMParser.expression().parseString("Message'(Data => Foo)")[0]
+        expected = MessageAggregate(Variable("Message"), {"Data": Variable("Foo")})
+        self.assertEqual(result, expected)
+
+    def test_complex_aggregate(self) -> None:
+        result = FSMParser.expression().parseString(
+            "Complex.Message'(Data1 => Foo, Data2 => Bar, Data3 => Baz)"
+        )[0]
+        expected = MessageAggregate(
+            Variable("Complex.Message"),
+            {"Data1": Variable("Foo"), "Data2": Variable("Bar"), "Data3": Variable("Baz")},
         )
         self.assertEqual(result, expected)
