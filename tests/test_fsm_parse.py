@@ -322,12 +322,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, expected)
 
     def test_simple_aggregate(self) -> None:
-        result = FSMParser.expression().parseString("Message'(Data => Foo)")[0]
+        result = FSMParser.condition().parseString("Message'(Data => Foo)")[0]
         expected = MessageAggregate(Variable("Message"), {"Data": Variable("Foo")})
         self.assertEqual(result, expected)
 
     def test_complex_aggregate(self) -> None:
-        result = FSMParser.expression().parseString(
+        result = FSMParser.condition().parseString(
             "Complex.Message'(Data1 => Foo, Data2 => Bar, Data3 => Baz)"
         )[0]
         expected = MessageAggregate(
@@ -337,12 +337,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, expected)
 
     def test_simple_function_call(self) -> None:
-        result = FSMParser.expression().parseString("Fun (Parameter)")[0]
+        result = FSMParser.condition().parseString("Fun (Parameter)")[0]
         expected = FunctionCall(Variable("Fun"), [Variable("Parameter")])
         self.assertEqual(result, expected)
 
     def test_complex_function_call(self) -> None:
-        result = FSMParser.expression().parseString("Complex_Function (Param1, Param2, Param3)")[0]
+        result = FSMParser.condition().parseString("Complex_Function (Param1, Param2, Param3)")[0]
         expected = FunctionCall(
             Variable("Complex_Function"),
             [Variable("Param1"), Variable("Param2"), Variable("Param3")],
