@@ -200,3 +200,26 @@ class MessageAggregate(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+
+class Binding(Expr):
+    def __init__(self, expr: Expr, data: Dict[str, Expr]) -> None:
+        self.__expr = expr
+        self.__data = data
+
+    def __repr__(self) -> str:
+        data = ", ".join(["{k} = {v}".format(k=k, v=self.__data[k]) for k in self.__data])
+        return f"{self.__expr} where {data}"
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def simplified(self) -> Expr:
+        raise NotImplementedError
+
+    @property
+    def precedence(self) -> Precedence:
+        return Precedence.undefined
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
