@@ -1,11 +1,9 @@
-from typing import List
+from typing import Any, List
 
 from pyparsing import (
     Forward,
     Keyword,
     Literal,
-    ParseFatalException,
-    ParseResults,
     StringEnd,
     Suppress,
     Token,
@@ -29,7 +27,7 @@ from rflx.expression import (
     Variable,
 )
 from rflx.fsm_expression import (
-    Attribute,
+    Binding,
     Comprehension,
     Contains,
     Field,
@@ -44,18 +42,6 @@ from rflx.fsm_expression import (
 )
 from rflx.parser import Parser
 from rflx.statement import Assignment
-
-
-def parse_attribute(string: str, location: int, tokens: ParseResults) -> Attribute:
-    if tokens[1] == "Valid":
-        return Valid(tokens[0])
-    if tokens[1] == "Present":
-        return Present(tokens[0])
-    if tokens[1] == "Length":
-        return Length(tokens[0])
-    if tokens[1] == "Head":
-        return Head(tokens[0])
-    raise ParseFatalException(string, location, "unexpected attribute")
 
 
 class FSMParser:
@@ -126,14 +112,31 @@ class FSMParser:
         return identifier
 
     @classmethod
+    def __parse_suffix(cls, data: List[Any]) -> Expr:
+        result = data[0][0]
+        for suffix in data[0][1:]:
+            if suffix[0] == "Head":
+                result = Head(result)
+            if suffix[0] == "Valid":
+                result = Valid(result)
+            if suffix[0] == "Present":
+                result = Present(result)
+            if suffix[0] == "Length":
+                result = Length(result)
+            if suffix[0] == "Field":
+                result = Field(result, suffix[1])
+            if suffix[0] == "Binding":
+                result = Binding(result, suffix[1])
+            if suffix[0] == "Aggregate":
+                result = MessageAggregate(result, suffix[1])
+
+        return result
+
+    @classmethod
     def expression(cls) -> Token:  # pylint: disable=too-many-locals
 
         boolean_literal = Parser.boolean_literal()
         boolean_literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
-
-        attribute_designator = (
-            Keyword("Valid") | Keyword("Present") | Keyword("Length") | Keyword("Head")
-        )
 
         expression = Forward()
 
@@ -142,9 +145,6 @@ class FSMParser:
         lpar, rpar = map(Suppress, "()")
         function_call = cls.__identifier() + lpar + parameters + rpar
         function_call.setParseAction(cls.__parse_function_call)
-
-        field = function_call + Literal(".").suppress() - Parser.identifier()
-        field.setParseAction(lambda t: Field(t[0], t[1]))
 
         quantifier = (
             Keyword("for").suppress()
@@ -171,47 +171,51 @@ class FSMParser:
         )
         comprehension.setParseAction(cls.__parse_comprehension)
 
-        attribute = (
-            (field | function_call | cls.__identifier() | comprehension)
-            + Literal("'").suppress()
-            - attribute_designator
-        )
-        attribute.setParseAction(parse_attribute)
-
         components = delimitedList(
             Parser.identifier() + Keyword("=>").suppress() + expression, delim=","
         )
         components.setParseAction(lambda t: dict(zip(t[0::2], t[1::2])))
 
-        aggregate = (
-            cls.__identifier() + Literal("'").suppress() + lpar + components + rpar
-        ).setParseAction(lambda t: MessageAggregate(t[0], t[1]))
-
-        attribute_field = attribute + Literal(".").suppress() + Parser.qualified_identifier()
-        attribute_field.setParseAction(lambda t: Field(t[0], t[1]))
+        terms = delimitedList(Parser.identifier() + Keyword("=").suppress() + expression, delim=",")
+        terms.setParseAction(lambda t: dict(zip(t[0::2], t[1::2])))
 
         atom = (
             Parser.numeric_literal()
             | boolean_literal
             | quantifier
-            | aggregate
-            | attribute_field
-            | attribute
-            | field
             | comprehension
             | function_call
             | cls.__identifier()
         )
 
+        attribute_designator = (
+            Keyword("Valid") | Keyword("Present") | Keyword("Length") | Keyword("Head")
+        )
+
+        attribute = Literal("'").suppress() - attribute_designator
+        attribute.setParseAction(lambda t: (t[0], None))
+
+        field = Literal(".").suppress() - Parser.identifier()
+        field.setParseAction(lambda t: ("Field", t[0]))
+
+        binding = Keyword("where").suppress() + terms
+        binding.setParseAction(lambda t: ("Binding", t[0]))
+
+        aggregate = Literal("'").suppress() + lpar + components + rpar
+        aggregate.setParseAction(lambda t: ("Aggregate", t[0]))
+
+        suffix = binding ^ attribute ^ field ^ aggregate
+
         expression <<= infixNotation(
             atom,
             [
+                (suffix, 1, opAssoc.LEFT, cls.__parse_suffix),
                 (Keyword("<"), 2, opAssoc.LEFT, cls.__parse_less),
                 (Keyword(">"), 2, opAssoc.LEFT, cls.__parse_greater),
                 (Keyword("="), 2, opAssoc.LEFT, cls.__parse_equation),
                 (Keyword("/="), 2, opAssoc.LEFT, cls.__parse_inequation),
-                (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
                 (Keyword("not in"), 2, opAssoc.LEFT, cls.__parse_notin),
+                (Keyword("in"), 2, opAssoc.LEFT, cls.__parse_in),
                 (Keyword("and").suppress(), 2, opAssoc.LEFT, cls.__parse_conj),
                 (Keyword("or").suppress(), 2, opAssoc.LEFT, cls.__parse_disj),
             ],

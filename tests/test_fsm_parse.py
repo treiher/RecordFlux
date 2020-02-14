@@ -14,6 +14,7 @@ from rflx.expression import (
     Variable,
 )
 from rflx.fsm_expression import (
+    Binding,
     Comprehension,
     Contains,
     Field,
@@ -214,11 +215,21 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_length_lt(self) -> None:
         result = FSMParser.condition().parseString("Foo'Length < 100")[0]
-        self.assertEqual(result, Less(Length(Variable("Foo")), Number(100)))
+        self.assertEqual(result, Less(Length(Variable("Foo")), Number(100)), msg=f"\n\n{result}")
 
     def test_gt(self) -> None:
         result = FSMParser.condition().parseString("Server_Name_Extension.Data_Length > 0")[0]
         self.assertEqual(result, Greater(Variable("Server_Name_Extension.Data_Length"), Number(0)))
+
+    def test_field_simple(self) -> None:
+        result = FSMParser.condition().parseString("Bar (Foo).Fld")[0]
+        self.assertEqual(result, Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
+
+    def test_field_length(self) -> None:
+        result = FSMParser.condition().parseString("Bar (Foo).Fld'Length")[0]
+        self.assertEqual(
+            result, Length(Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
+        )
 
     def test_field_length_lt(self) -> None:
         result = FSMParser.condition().parseString("Bar (Foo).Fld'Length < 100")[0]
@@ -348,3 +359,41 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             [Variable("Param1"), Variable("Param2"), Variable("Param3")],
         )
         self.assertEqual(result, expected)
+
+    def test_simple_binding(self) -> None:
+        result = FSMParser.condition().parseString("M1'(Data => B1) where B1 = M2'(Data => B2)")[0]
+        expected = Binding(
+            MessageAggregate(Variable("M1"), {"Data": Variable("B1")}),
+            {"B1": MessageAggregate(Variable("M2"), {"Data": Variable("B2")})},
+        )
+        self.assertEqual(result, expected)
+
+    def test_multi_binding(self) -> None:
+        result = FSMParser.condition().parseString(
+            "M1'(Data1 => B1, Data2 => B2) where B1 = M2'(Data => B2), B2 = M2'(Data => B3)"
+        )[0]
+        expected = Binding(
+            MessageAggregate(Variable("M1"), {"Data1": Variable("B1"), "Data2": Variable("B2")}),
+            {
+                "B1": MessageAggregate(Variable("M2"), {"Data": Variable("B2")}),
+                "B2": MessageAggregate(Variable("M2"), {"Data": Variable("B3")}),
+            },
+        )
+        self.assertEqual(result, expected)
+
+    def test_nested_binding(self) -> None:
+        result = FSMParser.condition().parseString(
+            "M1'(Data => B1) where B1 = M2'(Data => B2) where B2 = M3'(Data => B3)"
+        )[0]
+        expected = Binding(
+            MessageAggregate(Variable("M1"), {"Data": Variable("B1")}),
+            {
+                "B1": Binding(
+                    MessageAggregate(Variable("M2"), {"Data": Variable("B2")}),
+                    {"B2": MessageAggregate(Variable("M3"), {"Data": Variable("B3")})},
+                )
+            },
+        )
+        self.assertEqual(
+            result, expected, msg=f"\n\n  result={repr(result)},\nexpected={repr(expected)}"
+        )
