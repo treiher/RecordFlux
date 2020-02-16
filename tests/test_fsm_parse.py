@@ -76,9 +76,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         )
 
     def test_disjunction_multi(self) -> None:
-        result = FSMParser.condition().parseString(
-            "Foo = Bar or Bar /= Baz " "or Baz'Valid = False"
-        )[0]
+        result = FSMParser.condition().parseString("Foo = Bar or Bar /= Baz or Baz'Valid = False")[
+            0
+        ]
         self.assertEqual(
             result,
             Or(
@@ -94,6 +94,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_not_in_operator(self) -> None:
         result = FSMParser.condition().parseString("Foo not in Bar")[0]
+        self.assertEqual(result, NotContains(Variable("Foo"), Variable("Bar")))
+
+    def test_not_in_whitespace_operator(self) -> None:
+        result = FSMParser.condition().parseString("Foo not   in  Bar")[0]
         self.assertEqual(result, NotContains(Variable("Foo"), Variable("Bar")))
 
     def test_parenthesized_expression(self) -> None:
