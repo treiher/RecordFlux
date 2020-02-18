@@ -41,6 +41,7 @@ from rflx.fsm_expression import (
     Head,
     MessageAggregate,
     NotContains,
+    Opaque,
     Present,
     SubprogramCall,
     Valid,
@@ -138,6 +139,8 @@ class FSMParser:
                 result = Head(result)
             if suffix[0] == "Valid":
                 result = Valid(result)
+            if suffix[0] == "Opaque":
+                result = Opaque(result)
             if suffix[0] == "Present":
                 result = Present(result)
             if suffix[0] == "Length":
@@ -209,7 +212,11 @@ class FSMParser:
         )
 
         attribute_designator = (
-            Keyword("Valid") | Keyword("Present") | Keyword("Length") | Keyword("Head")
+            Keyword("Valid")
+            | Keyword("Present")
+            | Keyword("Length")
+            | Keyword("Head")
+            | Keyword("Opaque")
         )
 
         attribute = Literal("'").suppress() - attribute_designator

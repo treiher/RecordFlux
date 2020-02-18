@@ -27,6 +27,7 @@ from rflx.fsm_expression import (
     Head,
     MessageAggregate,
     NotContains,
+    Opaque,
     Present,
     SubprogramCall,
     Valid,
@@ -53,6 +54,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_conjunction_valid(self) -> None:
         result = FSMParser.condition().parseString("Foo'Valid and Bar'Valid")[0]
         self.assertEqual(result, And(Valid(Variable("Foo")), Valid(Variable("Bar"))))
+
+    def test_opaque(self) -> None:
+        result = FSMParser.condition().parseString("Something'Opaque")[0]
+        self.assertEqual(result, Opaque(Variable("Something")))
 
     def test_conjunction(self) -> None:
         result = FSMParser.condition().parseString("Foo = Bar and Bar /= Baz")[0]
