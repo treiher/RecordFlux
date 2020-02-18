@@ -261,6 +261,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ),
         )
 
+    def test_list_comprehension_without_condition(self) -> None:
+        result = FSMParser.condition().parseString("[for K in PSKs => K.Identity]")[0]
+        expected = Comprehension(Variable("K"), Variable("PSKs"), Variable("K.Identity"), TRUE)
+        self.assertEqual(result, expected)
+
     def test_head_attribute(self) -> None:
         result = FSMParser.condition().parseString("Foo'Head")[0]
         self.assertEqual(result, Head(Variable("Foo")))

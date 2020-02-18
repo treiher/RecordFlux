@@ -21,5 +21,8 @@ class TestFSM(unittest.TestCase):
 
     def test_list_append(self) -> None:
         result = FSMParser.action().parseString("Extensions_List'Append (Foo)")[0]
-        expected = Assignment(Variable("Extensions_List"), SubprogramCall(Variable("Append"), [Variable("Extensions_List"), Variable("Foo")]))
+        expected = Assignment(
+            Variable("Extensions_List"),
+            SubprogramCall(Variable("Append"), [Variable("Extensions_List"), Variable("Foo")]),
+        )
         self.assertEqual(result, expected)

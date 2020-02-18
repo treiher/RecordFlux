@@ -4,6 +4,7 @@ from pyparsing import (
     Forward,
     Keyword,
     Literal,
+    Optional,
     StringEnd,
     Suppress,
     Token,
@@ -65,7 +66,8 @@ class FSMParser:
     def __parse_comprehension(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[0], Variable):
             raise TypeError("quantifier not of type Variable")
-        return Comprehension(tokens[0], tokens[1], tokens[2], tokens[3])
+        condition = tokens[3] if len(tokens) > 3 else TRUE
+        return Comprehension(tokens[0], tokens[1], tokens[2], condition)
 
     @classmethod
     def __parse_call(cls, tokens: List[Expr]) -> Expr:
@@ -177,8 +179,7 @@ class FSMParser:
             + expression
             - Keyword("=>").suppress()
             + expression
-            - Keyword("when").suppress()
-            + expression
+            + Optional(Keyword("when").suppress() + expression)
             - Literal("]").suppress()
         )
         comprehension.setParseAction(cls.__parse_comprehension)
@@ -263,7 +264,11 @@ class FSMParser:
 
         attribute_designator = Keyword("Append") | Keyword("Extend")
 
-        list_operation = cls.__identifier() + Literal("'").suppress() + attribute_designator + parameters
-        list_operation.setParseAction(lambda t: Assignment(t[0], SubprogramCall(Variable(t[1]), [t[0], t[2]])))
+        list_operation = (
+            cls.__identifier() + Literal("'").suppress() + attribute_designator + parameters
+        )
+        list_operation.setParseAction(
+            lambda t: Assignment(t[0], SubprogramCall(Variable(t[1]), [t[0], t[2]]))
+        )
 
         return assignment | list_operation | call
