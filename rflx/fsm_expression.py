@@ -107,7 +107,7 @@ class NotContains(Relation):
         raise NotImplementedError
 
 
-class FunctionCall(Expr):
+class SubprogramCall(Expr):
     def __init__(self, name: Variable, arguments: List[Expr]) -> None:
         self.__name = name
         self.__arguments = arguments

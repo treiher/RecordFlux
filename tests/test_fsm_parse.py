@@ -24,11 +24,11 @@ from rflx.fsm_expression import (
     Field,
     ForAll,
     ForSome,
-    FunctionCall,
     Head,
     MessageAggregate,
     NotContains,
     Present,
+    SubprogramCall,
     Valid,
 )
 from rflx.fsm_parser import FSMParser
@@ -170,7 +170,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 NotContains(
                     Variable("GreenTLS.TLS_1_3"),
                     Field(
-                        FunctionCall(
+                        SubprogramCall(
                             Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]
                         ),
                         "Versions",
@@ -189,14 +189,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_type_conversion_simple(self) -> None:
         expr = "Foo (Bar) = 5"
         result = FSMParser.condition().parseString(expr)[0]
-        expected = Equal(FunctionCall(Variable("Foo"), [Variable("Bar")]), Number(5))
+        expected = Equal(SubprogramCall(Variable("Foo"), [Variable("Bar")]), Number(5))
         self.assertEqual(result, expected)
 
     def test_type_conversion(self) -> None:
         expr = "TLS_Handshake.Supported_Versions (E.Data) = 5"
         result = FSMParser.condition().parseString(expr)[0]
         expected = Equal(
-            FunctionCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
+            SubprogramCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
             Number(5),
         )
         self.assertEqual(result, expected)
@@ -207,7 +207,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expected = NotContains(
             Variable("GreenTLS.TLS_1_3"),
             Field(
-                FunctionCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
+                SubprogramCall(Variable("TLS_Handshake.Supported_Versions"), [Variable("E.Data")]),
                 "Versions",
             ),
         )
@@ -231,12 +231,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_field_simple(self) -> None:
         result = FSMParser.condition().parseString("Bar (Foo).Fld")[0]
-        self.assertEqual(result, Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
+        self.assertEqual(result, Field(SubprogramCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
 
     def test_field_length(self) -> None:
         result = FSMParser.condition().parseString("Bar (Foo).Fld'Length")[0]
         self.assertEqual(
-            result, Length(Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
+            result, Length(Field(SubprogramCall(Variable("Bar"), [Variable("Foo")]), "Fld"))
         )
 
     def test_field_length_lt(self) -> None:
@@ -244,7 +244,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(
             result,
             Less(
-                Length(Field(FunctionCall(Variable("Bar"), [Variable("Foo")]), "Fld")), Number(100)
+                Length(Field(SubprogramCall(Variable("Bar"), [Variable("Foo")]), "Fld")),
+                Number(100),
             ),
         )
 
@@ -313,7 +314,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ForSome(
                 Variable("S"),
                 Field(
-                    FunctionCall(
+                    SubprogramCall(
                         Variable("TLS_Handshake.Key_Share_CH"),
                         [
                             Field(
@@ -357,12 +358,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_simple_function_call(self) -> None:
         result = FSMParser.condition().parseString("Fun (Parameter)")[0]
-        expected = FunctionCall(Variable("Fun"), [Variable("Parameter")])
+        expected = SubprogramCall(Variable("Fun"), [Variable("Parameter")])
         self.assertEqual(result, expected)
 
     def test_complex_function_call(self) -> None:
         result = FSMParser.condition().parseString("Complex_Function (Param1, Param2, Param3)")[0]
-        expected = FunctionCall(
+        expected = SubprogramCall(
             Variable("Complex_Function"),
             [Variable("Param1"), Variable("Param2"), Variable("Param3")],
         )

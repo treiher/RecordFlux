@@ -37,11 +37,11 @@ from rflx.fsm_expression import (
     Field,
     ForAll,
     ForSome,
-    FunctionCall,
     Head,
     MessageAggregate,
     NotContains,
     Present,
+    SubprogramCall,
     Valid,
 )
 from rflx.parser.grammar import (
@@ -76,7 +76,7 @@ class FSMParser:
     def __parse_function_call(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[0], Variable):
             raise TypeError("target not of type Variable")
-        return FunctionCall(tokens[0], tokens[1:])
+        return SubprogramCall(tokens[0], tokens[1:])
 
     @classmethod
     def __identifier(cls) -> Token:
