@@ -3,14 +3,18 @@ import unittest
 from rflx.expression import (
     FALSE,
     TRUE,
+    Add,
     And,
+    Div,
     Equal,
     Greater,
     Length,
     Less,
+    Mul,
     NotEqual,
     Number,
     Or,
+    Sub,
     Variable,
 )
 from rflx.fsm_expression import (
@@ -401,3 +405,34 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(
             result, expected, msg=f"\n\n  result={repr(result)},\nexpected={repr(expected)}"
         )
+
+    def test_simple_add(self) -> None:
+        result = FSMParser.condition().parseString("Foo + Bar")[0]
+        expected = Add(Variable("Foo"), Variable("Bar"))
+        self.assertEqual(result, expected)
+
+    def test_simple_sub(self) -> None:
+        result = FSMParser.condition().parseString("Foo - Bar")[0]
+        expected = Sub(Variable("Foo"), Variable("Bar"))
+        self.assertEqual(result, expected)
+
+    def test_simple_mul(self) -> None:
+        result = FSMParser.condition().parseString("Foo * Bar")[0]
+        expected = Mul(Variable("Foo"), Variable("Bar"))
+        self.assertEqual(result, expected)
+
+    def test_simple_div(self) -> None:
+        result = FSMParser.condition().parseString("Foo / Bar")[0]
+        expected = Div(Variable("Foo"), Variable("Bar"))
+        self.assertEqual(result, expected)
+
+    def test_arith_expression(self) -> None:
+        result = FSMParser.condition().parseString("Foo + Bar - Foo2 / Bar * Baz + 3")[0]
+        expected = Add(
+            Sub(
+                Add(Variable("Foo"), Variable("Bar")),
+                Mul(Div(Variable("Foo2"), Variable("Bar")), Variable("Baz")),
+            ),
+            Number(3),
+        )
+        self.assertEqual(result, expected, msg=f"\n\n{result}\n{expected}")
