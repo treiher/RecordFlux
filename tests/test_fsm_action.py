@@ -3,7 +3,7 @@ import unittest
 from rflx.expression import Variable
 from rflx.fsm_expression import String, SubprogramCall
 from rflx.fsm_parser import FSMParser
-from rflx.statement import Assignment, Erase
+from rflx.statement import Assignment, Erase, Reset
 
 
 class TestFSM(unittest.TestCase):
@@ -37,4 +37,9 @@ class TestFSM(unittest.TestCase):
     def test_variable_erasure(self) -> None:
         result = FSMParser.action().parseString("Variable := null")[0]
         expected = Erase(Variable("Variable"))
+        self.assertEqual(result, expected)
+
+    def test_list_reset(self) -> None:
+        result = FSMParser.action().parseString("SomeList'Reset")[0]
+        expected = Reset(Variable("SomeList"))
         self.assertEqual(result, expected)
