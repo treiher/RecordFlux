@@ -50,7 +50,7 @@ from rflx.fsm_expression import (
     Valid,
 )
 from rflx.parser import Parser
-from rflx.statement import Assignment, Erase
+from rflx.statement import Assignment, Erase, Reset
 
 
 class InternalError(Exception):
@@ -292,4 +292,7 @@ class FSMParser:
             lambda t: Assignment(t[0], SubprogramCall(Variable(t[1]), [t[0], t[2]]))
         )
 
-        return erase | assignment | list_operation | call
+        list_reset = cls.__identifier() + Literal("'").suppress() + Keyword("Reset")
+        list_reset.setParseAction(lambda t: Reset(t[0]))
+
+        return erase | assignment | list_reset | list_operation | call
