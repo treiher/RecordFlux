@@ -1,7 +1,7 @@
 import unittest
 
 from rflx.expression import Variable
-from rflx.fsm_expression import SubprogramCall
+from rflx.fsm_expression import String, SubprogramCall
 from rflx.fsm_parser import FSMParser
 from rflx.statement import Assignment
 
@@ -24,5 +24,12 @@ class TestFSM(unittest.TestCase):
         expected = Assignment(
             Variable("Extensions_List"),
             SubprogramCall(Variable("Append"), [Variable("Extensions_List"), Variable("Foo")]),
+        )
+        self.assertEqual(result, expected)
+
+    def test_subprogram_string_argument(self) -> None:
+        result = FSMParser.action().parseString('Sub (Arg1, "String arg", Arg2)')[0]
+        expected = SubprogramCall(
+            Variable("Sub"), [Variable("Arg1"), String("String arg"), Variable("Arg2")]
         )
         self.assertEqual(result, expected)

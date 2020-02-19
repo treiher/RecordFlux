@@ -8,10 +8,12 @@ from pyparsing import (
     StringEnd,
     Suppress,
     Token,
+    Word,
     delimitedList,
     infixNotation,
     oneOf,
     opAssoc,
+    printables,
 )
 
 from rflx.expression import (
@@ -43,6 +45,7 @@ from rflx.fsm_expression import (
     NotContains,
     Opaque,
     Present,
+    String,
     SubprogramCall,
     Valid,
 )
@@ -155,6 +158,13 @@ class FSMParser:
         boolean_literal = Parser.boolean_literal()
         boolean_literal.setParseAction(lambda t: TRUE if t[0] == "True" else FALSE)
 
+        string_literal = (
+            Literal('"').suppress()
+            + Word(printables + " ", excludeChars='"')
+            + Literal('"').suppress()
+        )
+        string_literal.setParseAction(lambda t: String(t[0]))
+
         expression = Forward()
 
         parameters = delimitedList(expression, delim=",")
@@ -198,6 +208,7 @@ class FSMParser:
         atom = (
             Parser.numeric_literal()
             | boolean_literal
+            | string_literal
             | quantifier
             | comprehension
             | function_call

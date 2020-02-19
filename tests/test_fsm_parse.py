@@ -29,6 +29,7 @@ from rflx.fsm_expression import (
     NotContains,
     Opaque,
     Present,
+    String,
     SubprogramCall,
     Valid,
 )
@@ -447,3 +448,13 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             Number(3),
         )
         self.assertEqual(result, expected, msg=f"\n\n{result}\n{expected}")
+
+    def test_string(self) -> None:
+        result = FSMParser.condition().parseString('"SomeString"')[0]
+        expected = String("SomeString")
+        self.assertEqual(result, expected)
+
+    def test_string_with_whitespace(self) -> None:
+        result = FSMParser.condition().parseString('"Some String With Whitespace"')[0]
+        expected = String("Some String With Whitespace")
+        self.assertEqual(result, expected)
