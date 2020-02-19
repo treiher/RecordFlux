@@ -3,7 +3,7 @@ import unittest
 from rflx.expression import Variable
 from rflx.fsm_expression import String, SubprogramCall
 from rflx.fsm_parser import FSMParser
-from rflx.statement import Assignment
+from rflx.statement import Assignment, Erase
 
 
 class TestFSM(unittest.TestCase):
@@ -32,4 +32,9 @@ class TestFSM(unittest.TestCase):
         expected = SubprogramCall(
             Variable("Sub"), [Variable("Arg1"), String("String arg"), Variable("Arg2")]
         )
+        self.assertEqual(result, expected)
+
+    def test_variable_erasure(self) -> None:
+        result = FSMParser.action().parseString("Variable := null")[0]
+        expected = Erase(Variable("Variable"))
         self.assertEqual(result, expected)
