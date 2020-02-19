@@ -50,7 +50,7 @@ from rflx.fsm_expression import (
     Valid,
 )
 from rflx.parser import Parser
-from rflx.statement import Assignment
+from rflx.statement import Assignment, Erase
 
 
 class InternalError(Exception):
@@ -277,7 +277,10 @@ class FSMParser:
         call = cls.__identifier() + parameters
         call.setParseAction(cls.__parse_call)
 
-        assignment = cls.__identifier() + Keyword(":=").suppress() + cls.expression() + StringEnd()
+        erase = cls.__identifier() + Literal(":=").suppress() + Keyword("null")
+        erase.setParseAction(lambda t: Erase(t[0]))
+
+        assignment = cls.__identifier() + Literal(":=").suppress() + cls.expression()
         assignment.setParseAction(lambda t: Assignment(t[0], t[1]))
 
         attribute_designator = Keyword("Append") | Keyword("Extend")
@@ -289,4 +292,4 @@ class FSMParser:
             lambda t: Assignment(t[0], SubprogramCall(Variable(t[1]), [t[0], t[2]]))
         )
 
-        return assignment | list_operation | call
+        return erase | assignment | list_operation | call
