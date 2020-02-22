@@ -359,6 +359,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expected = MessageAggregate(Variable("Message"), {"Data": Variable("Foo")})
         self.assertEqual(result, expected)
 
+    def test_null_aggregate(self) -> None:
+        result = FSMParser.expression().parseString("Message'(null message)")[0]
+        expected = MessageAggregate(Variable("Message"), {})
+        self.assertEqual(result, expected)
+
     def test_complex_aggregate(self) -> None:
         result = FSMParser.expression().parseString(
             "Complex.Message'(Data1 => Foo, Data2 => Bar, Data3 => Baz)"
