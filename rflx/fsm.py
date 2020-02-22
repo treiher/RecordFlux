@@ -4,7 +4,7 @@ import yaml
 from pyparsing import ParseFatalException
 
 from rflx.expression import TRUE, Expr
-from rflx.fsm_declaration import Subprogram
+from rflx.fsm_declaration import Declaration
 from rflx.fsm_parser import FSMParser
 from rflx.model import Base, ModelError
 from rflx.statement import Statement
@@ -56,13 +56,13 @@ class StateMachine(Base):
         initial: StateName,
         final: StateName,
         states: Iterable[State],
-        functions: Dict[str, Subprogram],
+        declarations: Dict[str, Declaration],
     ):  # pylint: disable=too-many-arguments
         self.__name = name
         self.__initial = initial
         self.__final = final
         self.__states = states
-        self.__functions = functions
+        self.__declarations = declarations
 
         if not states:
             raise ModelError("empty states")
@@ -132,17 +132,22 @@ class FSM:
         self.__fsms: List[StateMachine] = []
 
     @classmethod
-    def __parse_functions(cls, doc: Dict[str, Any]) -> Dict[str, Subprogram]:
-        if "functions" not in doc:
-            return {}
-
-        result: Dict[str, Subprogram] = {}
-        for index, f in enumerate(doc["functions"]):
-            try:
-                name, declaration = FSMParser.declaration().parseString(f)[0]
-            except Exception as e:
-                raise ModelError(f"error parsing global function declaration {index} ({e})")
-            result[name] = declaration
+    def __parse_declarations(cls, doc: Dict[str, Any]) -> Dict[str, Declaration]:
+        result: Dict[str, Declaration] = {}
+        if "functions" in doc:
+            for index, f in enumerate(doc["functions"]):
+                try:
+                    name, declaration = FSMParser.declaration().parseString(f)[0]
+                except Exception as e:
+                    raise ModelError(f"error parsing global function declaration {index} ({e})")
+                result[name] = declaration
+        if "variables" in doc:
+            for index, f in enumerate(doc["variables"]):
+                try:
+                    name, declaration = FSMParser.declaration().parseString(f)[0]
+                except Exception as e:
+                    raise ModelError(f"error parsing global variable declaration {index} ({e})")
+                result[name] = declaration
         return result
 
     @classmethod
@@ -184,7 +189,7 @@ class FSM:
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
 
-        functions = self.__parse_functions(doc)
+        declarations = self.__parse_declarations(doc)
 
         states: List[State] = []
         for s in doc["states"]:
@@ -212,7 +217,7 @@ class FSM:
             initial=StateName(doc["initial"]),
             final=StateName(doc["final"]),
             states=states,
-            functions=functions,
+            declarations=declarations,
         )
         self.__fsms.append(fsm)
 

@@ -1,7 +1,7 @@
 from abc import ABC
-from typing import List
+from typing import List, Optional
 
-from rflx.expression import Variable
+from rflx.expression import Expr, Variable
 
 
 class Declaration(ABC):
@@ -19,6 +19,12 @@ class Argument(Declaration):
     def __init__(self, name: Variable, typ: Variable):
         self.__name = name
         self.__type = typ
+
+
+class VariableDeclaration(Declaration):
+    def __init__(self, typ: Variable, init: Optional[Expr] = None):
+        self.__type = typ
+        self.__init = init
 
 
 class Subprogram(Declaration):
