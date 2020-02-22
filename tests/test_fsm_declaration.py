@@ -3,8 +3,17 @@ import unittest
 from pyparsing import ParseException
 
 from rflx.expression import FALSE, Variable
-from rflx.fsm_declaration import Argument, PrivateVariable, Renames, Subprogram, VariableDeclaration
+from rflx.fsm import FSM, State, StateMachine, StateName, Transition
+from rflx.fsm_declaration import (
+    Argument,
+    Channel,
+    PrivateVariable,
+    Renames,
+    Subprogram,
+    VariableDeclaration,
+)
 from rflx.fsm_parser import FSMParser
+from rflx.model import ModelError
 
 
 class TestFSM(unittest.TestCase):
@@ -76,9 +85,99 @@ class TestFSM(unittest.TestCase):
                 Variable("TLS_Handshake.Certificate"), Variable("CCR_Handshake_Message.Payload")
             ),
         )
-        self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
+        self.assertEqual(result, expected)
 
     def test_private_variable_declaration(self) -> None:
         result = FSMParser.declaration().parseString("Hash_Context is private")[0]
         expected = ("Hash_Context", PrivateVariable())
         self.assertEqual(result, expected)
+
+    def test_channels(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                channels:
+                    - name: Channel1_Read_Write
+                      mode: Read_Write
+                    - name: Channel2_Read
+                      mode: Read
+                    - name: Channel3_Write
+                      mode: Write
+                initial: START
+                final: END
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Channel1_Read_Write": Channel(read=True, write=True),
+                "Channel2_Read": Channel(read=True, write=False),
+                "Channel3_Write": Channel(read=False, write=True),
+            },
+        )
+
+    def test_channel_with_invalid_mode(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Channel Channel1_Read_Write has invalid mode Invalid"
+        ):
+            FSM().parse_string(
+                "fsm",
+                """
+                    channels:
+                        - name: Channel1_Read_Write
+                          mode: Invalid
+                    initial: START
+                    final: END
+                    states:
+                      - name: START
+                        transitions:
+                          - target: END
+                      - name: END
+                """,
+            )
+
+    def test_channel_without_name(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^Channel 0 has no name"):
+            FSM().parse_string(
+                "fsm",
+                """
+                    channels:
+                        - mode: Read_Write
+                    initial: START
+                    final: END
+                    states:
+                      - name: START
+                        transitions:
+                          - target: END
+                      - name: END
+                """,
+            )
+
+    def test_channel_without_mode(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^Channel Channel_Without_Mode has no mode"):
+            FSM().parse_string(
+                "fsm",
+                """
+                    channels:
+                        - name: Channel_Without_Mode
+                    initial: START
+                    final: END
+                    states:
+                      - name: START
+                        transitions:
+                          - target: END
+                      - name: END
+                """,
+            )

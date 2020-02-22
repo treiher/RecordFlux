@@ -4,7 +4,7 @@ import yaml
 from pyparsing import ParseFatalException
 
 from rflx.expression import TRUE, Expr
-from rflx.fsm_declaration import Declaration
+from rflx.fsm_declaration import Channel, Declaration
 from rflx.fsm_parser import FSMParser
 from rflx.model import Element, ModelError
 from rflx.statement import Statement
@@ -155,6 +155,25 @@ class FSM:
                 except Exception as e:
                     raise ModelError(f"error parsing private variable declaration {index} ({e})")
                 result[name] = declaration
+        if "channels" in doc:
+            for index, f in enumerate(doc["channels"]):
+                if "name" not in f:
+                    raise ModelError(f"Channel {index} has no name")
+                if "mode" not in f:
+                    raise ModelError(f"Channel {f['name']} has no mode")
+                if f["mode"] == "Read":
+                    read = True
+                    write = False
+                elif f["mode"] == "Write":
+                    read = False
+                    write = True
+                elif f["mode"] == "Read_Write":
+                    read = True
+                    write = True
+                else:
+                    raise ModelError(f"Channel {f['name']} has invalid mode {f['mode']}")
+
+                result[f["name"]] = Channel(read=read, write=write)
         return result
 
     @classmethod
@@ -182,7 +201,7 @@ class FSM:
                 transitions.append(Transition(target=StateName(t["target"]), condition=condition))
         return transitions
 
-    def __parse(self, name: str, doc: Dict[str, Any]) -> None:  # pylint: disable=too-many-locals
+    def __parse(self, name: str, doc: Dict[str, Any]) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
         if "final" not in doc:
@@ -195,8 +214,6 @@ class FSM:
         )
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
-
-        declarations = self.__parse_declarations(doc)
 
         states: List[State] = []
         for s in doc["states"]:
@@ -224,7 +241,7 @@ class FSM:
             initial=StateName(doc["initial"]),
             final=StateName(doc["final"]),
             states=states,
-            declarations=declarations,
+            declarations=self.__parse_declarations(doc),
         )
         self.__fsms.append(fsm)
 
