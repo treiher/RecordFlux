@@ -111,7 +111,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, NotContains(Variable("Foo"), Variable("Bar")))
 
     def test_parenthesized_expression(self) -> None:
-        result = FSMParser.expression().parseString("Foo = True and (Bar = False or Baz = False)")[0]
+        result = FSMParser.expression().parseString("Foo = True and (Bar = False or Baz = False)")[
+            0
+        ]
         self.assertEqual(
             result,
             And(
@@ -355,6 +357,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_simple_aggregate(self) -> None:
         result = FSMParser.expression().parseString("Message'(Data => Foo)")[0]
         expected = MessageAggregate(Variable("Message"), {"Data": Variable("Foo")})
+        self.assertEqual(result, expected)
+
+    def test_null_aggregate(self) -> None:
+        result = FSMParser.expression().parseString("Message'(null message)")[0]
+        expected = MessageAggregate(Variable("Message"), {})
         self.assertEqual(result, expected)
 
     def test_complex_aggregate(self) -> None:
