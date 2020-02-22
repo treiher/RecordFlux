@@ -41,3 +41,9 @@ class Renames(Declaration):
     def __init__(self, typ: Variable, expr: Expr):
         self.__type = typ
         self.__expr = expr
+
+
+class Channel(Declaration):
+    def __init__(self, read: bool, write: bool):
+        self.__read = read
+        self.__write = write
