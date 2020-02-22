@@ -2,8 +2,8 @@ import unittest
 
 from pyparsing import ParseException
 
-from rflx.expression import Variable
-from rflx.fsm_declaration import Argument, Subprogram
+from rflx.expression import FALSE, Variable
+from rflx.fsm_declaration import Argument, Subprogram, VariableDeclaration
 from rflx.fsm_parser import FSMParser
 
 
@@ -44,4 +44,24 @@ class TestFSM(unittest.TestCase):
     def test_parameterless_function_declaration(self) -> None:
         result = FSMParser.declaration().parseString("Foo return Foo_Type")[0]
         expected = ("Foo", Subprogram([], Variable("Foo_Type")))
+        self.assertEqual(result, expected)
+
+    def test_simple_variable_declaration(self) -> None:
+        result = FSMParser.declaration().parseString(
+            "Certificate_Authorities : TLS_Handshake.Certificate_Authorities"
+        )[0]
+        expected = (
+            "Certificate_Authorities",
+            VariableDeclaration(Variable("TLS_Handshake.Certificate_Authorities")),
+        )
+        self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
+
+    def test_variable_declaration_with_initialization(self) -> None:
+        result = FSMParser.declaration().parseString(
+            "Certificate_Authorities_Received : Boolean := False"
+        )[0]
+        expected = (
+            "Certificate_Authorities_Received",
+            VariableDeclaration(Variable("Boolean"), FALSE),
+        )
         self.assertEqual(result, expected)

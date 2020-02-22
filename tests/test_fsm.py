@@ -36,7 +36,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
                 State(name=StateName("END")),
             ],
-            functions={},
+            declarations={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -82,7 +82,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 initial=StateName("START"),
                 final=StateName("END"),
                 states=[],
-                functions={},
+                declarations={},
             )
 
     def test_invalid_initial(self) -> None:
@@ -99,7 +99,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_invalid_final(self) -> None:
@@ -116,7 +116,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_invalid_target_state(self) -> None:
@@ -135,7 +135,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_duplicate_state(self) -> None:
@@ -151,7 +151,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("START")),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_multiple_duplicate_states(self) -> None:
@@ -171,7 +171,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("BAR")),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_unreachable_state(self) -> None:
@@ -190,7 +190,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_multiple_unreachable_states(self) -> None:
@@ -213,7 +213,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_detached_state(self) -> None:
@@ -233,7 +233,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("DETACHED")),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_multiple_detached_states(self) -> None:
@@ -255,7 +255,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("DETACHED2")),
                     State(name=StateName("END")),
                 ],
-                functions={},
+                declarations={},
             )
 
     def test_fsm_with_conditions(self) -> None:
@@ -298,7 +298,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            functions={},
+            declarations={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -364,7 +364,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            functions={},
+            declarations={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -408,7 +408,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
                 State(name=StateName("END")),
             ],
-            functions={
+            declarations={
                 "Foo": Subprogram(
                     [
                         Argument(Variable("Bar"), Variable("T1")),
