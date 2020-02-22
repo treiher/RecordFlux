@@ -127,6 +127,7 @@ class TestFSM(unittest.TestCase):
                 "Channel3_Write": Channel(read=False, write=True),
             },
         )
+        self.assertEqual(f.fsms[0], expected)
 
     def test_channel_with_invalid_mode(self) -> None:
         with self.assertRaisesRegex(
