@@ -2,10 +2,11 @@ import unittest
 
 from rflx.expression import FALSE, Equal, Variable
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
+from rflx.fsm_declaration import Argument, Subprogram
 from rflx.model import ModelError
 
 
-class TestFSM(unittest.TestCase):
+class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
 
@@ -35,6 +36,7 @@ class TestFSM(unittest.TestCase):
                 State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
                 State(name=StateName("END")),
             ],
+            functions={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -75,7 +77,13 @@ class TestFSM(unittest.TestCase):
 
     def test_empty_states(self) -> None:
         with self.assertRaisesRegex(ModelError, "^empty states"):
-            StateMachine(name="fsm", initial=StateName("START"), final=StateName("END"), states=[])
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[],
+                functions={},
+            )
 
     def test_invalid_initial(self) -> None:
         with self.assertRaisesRegex(
@@ -91,6 +99,7 @@ class TestFSM(unittest.TestCase):
                     ),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_invalid_final(self) -> None:
@@ -107,6 +116,7 @@ class TestFSM(unittest.TestCase):
                     ),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_invalid_target_state(self) -> None:
@@ -125,6 +135,7 @@ class TestFSM(unittest.TestCase):
                     ),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_duplicate_state(self) -> None:
@@ -140,6 +151,7 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("START")),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_multiple_duplicate_states(self) -> None:
@@ -159,6 +171,7 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("BAR")),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_unreachable_state(self) -> None:
@@ -177,6 +190,7 @@ class TestFSM(unittest.TestCase):
                     ),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_multiple_unreachable_states(self) -> None:
@@ -199,6 +213,7 @@ class TestFSM(unittest.TestCase):
                     ),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_detached_state(self) -> None:
@@ -218,6 +233,7 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("DETACHED")),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_multiple_detached_states(self) -> None:
@@ -239,6 +255,7 @@ class TestFSM(unittest.TestCase):
                     State(name=StateName("DETACHED2")),
                     State(name=StateName("END")),
                 ],
+                functions={},
             )
 
     def test_fsm_with_conditions(self) -> None:
@@ -281,6 +298,7 @@ class TestFSM(unittest.TestCase):
                 ),
                 State(name=StateName("END")),
             ],
+            functions={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -346,6 +364,7 @@ class TestFSM(unittest.TestCase):
                 ),
                 State(name=StateName("END")),
             ],
+            functions={},
         )
         self.assertEqual(f.fsms[0], expected)
 
@@ -364,3 +383,39 @@ class TestFSM(unittest.TestCase):
             """,
             r"^unexpected elements \[invalid1, invalid2\]",
         )
+
+    def test_fsm_with_function_decl(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                functions:
+                    - \"Foo(Bar : T1; Baz : P1.T1) return P2.T3\"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(name=StateName("END")),
+            ],
+            functions={
+                "Foo": Subprogram(
+                    [
+                        Argument(Variable("Bar"), Variable("T1")),
+                        Argument(Variable("Baz"), Variable("P1.T1")),
+                    ],
+                    Variable("P2.T3"),
+                )
+            },
+        )
+        self.assertEqual(f.fsms[0], expected)
