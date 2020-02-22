@@ -31,3 +31,9 @@ class Subprogram(Declaration):
     def __init__(self, arguments: List[Argument], return_type: Variable):
         self.__arguments = arguments
         self.__return_type = return_type
+
+
+class Renames(Declaration):
+    def __init__(self, typ: Variable, expr: Expr):
+        self.__type = typ
+        self.__expr = expr

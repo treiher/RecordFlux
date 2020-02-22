@@ -3,7 +3,7 @@ import unittest
 from pyparsing import ParseException
 
 from rflx.expression import FALSE, Variable
-from rflx.fsm_declaration import Argument, Subprogram, VariableDeclaration
+from rflx.fsm_declaration import Argument, Renames, Subprogram, VariableDeclaration
 from rflx.fsm_parser import FSMParser
 
 
@@ -54,7 +54,7 @@ class TestFSM(unittest.TestCase):
             "Certificate_Authorities",
             VariableDeclaration(Variable("TLS_Handshake.Certificate_Authorities")),
         )
-        self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
+        self.assertEqual(result, expected)
 
     def test_variable_declaration_with_initialization(self) -> None:
         result = FSMParser.declaration().parseString(
@@ -65,3 +65,15 @@ class TestFSM(unittest.TestCase):
             VariableDeclaration(Variable("Boolean"), FALSE),
         )
         self.assertEqual(result, expected)
+
+    def test_renames(self) -> None:
+        result = FSMParser.declaration().parseString(
+            "Certificate_Message : TLS_Handshake.Certificate renames CCR_Handshake_Message.Payload"
+        )[0]
+        expected = (
+            "Certificate_Message",
+            Renames(
+                Variable("TLS_Handshake.Certificate"), Variable("CCR_Handshake_Message.Payload")
+            ),
+        )
+        self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
