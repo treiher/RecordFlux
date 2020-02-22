@@ -132,48 +132,65 @@ class FSM:
         self.__fsms: List[StateMachine] = []
 
     @classmethod
+    def __parse_functions(cls, doc: Dict[str, Any], result: Dict[str, Declaration]) -> None:
+        if "functions" not in doc:
+            return
+        for index, f in enumerate(doc["functions"]):
+            try:
+                name, declaration = FSMParser.declaration().parseString(f)[0]
+            except Exception as e:
+                raise ModelError(f"error parsing global function declaration {index} ({e})")
+            result[name] = declaration
+
+    @classmethod
+    def __parse_variables(cls, doc: Dict[str, Any], result: Dict[str, Declaration]) -> None:
+        if "variables" not in doc:
+            return
+        for index, f in enumerate(doc["variables"]):
+            try:
+                name, declaration = FSMParser.declaration().parseString(f)[0]
+            except Exception as e:
+                raise ModelError(f"error parsing global variable declaration {index} ({e})")
+            result[name] = declaration
+
+    @classmethod
+    def __parse_types(cls, doc: Dict[str, Any], result: Dict[str, Declaration]) -> None:
+        if "types" not in doc:
+            return
+        for index, f in enumerate(doc["types"]):
+            try:
+                name, declaration = FSMParser.declaration().parseString(f)[0]
+            except Exception as e:
+                raise ModelError(f"error parsing private variable declaration {index} ({e})")
+            result[name] = declaration
+
+    @classmethod
+    def __parse_channels(cls, doc: Dict[str, Any], result: Dict[str, Declaration]) -> None:
+        if "channels" not in doc:
+            return
+        for index, f in enumerate(doc["channels"]):
+            if "name" not in f:
+                raise ModelError(f"Channel {index} has no name")
+            if "mode" not in f:
+                raise ModelError(f"Channel {f['name']} has no mode")
+            modes = {
+                "Read": {"read": True, "write": False},
+                "Write": {"read": False, "write": True},
+                "Read_Write": {"read": True, "write": True},
+            }
+            mode = f["mode"]
+            try:
+                result[f["name"]] = Channel(modes[mode]["read"], modes[mode]["write"])
+            except KeyError:
+                raise ModelError(f"Channel {f['name']} has invalid mode {mode}")
+
+    @classmethod
     def __parse_declarations(cls, doc: Dict[str, Any]) -> Dict[str, Declaration]:
         result: Dict[str, Declaration] = {}
-        if "functions" in doc:
-            for index, f in enumerate(doc["functions"]):
-                try:
-                    name, declaration = FSMParser.declaration().parseString(f)[0]
-                except Exception as e:
-                    raise ModelError(f"error parsing global function declaration {index} ({e})")
-                result[name] = declaration
-        if "variables" in doc:
-            for index, f in enumerate(doc["variables"]):
-                try:
-                    name, declaration = FSMParser.declaration().parseString(f)[0]
-                except Exception as e:
-                    raise ModelError(f"error parsing global variable declaration {index} ({e})")
-                result[name] = declaration
-        if "types" in doc:
-            for index, f in enumerate(doc["types"]):
-                try:
-                    name, declaration = FSMParser.declaration().parseString(f)[0]
-                except Exception as e:
-                    raise ModelError(f"error parsing private variable declaration {index} ({e})")
-                result[name] = declaration
-        if "channels" in doc:
-            for index, f in enumerate(doc["channels"]):
-                if "name" not in f:
-                    raise ModelError(f"Channel {index} has no name")
-                if "mode" not in f:
-                    raise ModelError(f"Channel {f['name']} has no mode")
-                if f["mode"] == "Read":
-                    read = True
-                    write = False
-                elif f["mode"] == "Write":
-                    read = False
-                    write = True
-                elif f["mode"] == "Read_Write":
-                    read = True
-                    write = True
-                else:
-                    raise ModelError(f"Channel {f['name']} has invalid mode {f['mode']}")
-
-                result[f["name"]] = Channel(read=read, write=write)
+        cls.__parse_functions(doc, result)
+        cls.__parse_variables(doc, result)
+        cls.__parse_types(doc, result)
+        cls.__parse_channels(doc, result)
         return result
 
     @classmethod
