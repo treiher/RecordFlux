@@ -3,7 +3,7 @@ import unittest
 from pyparsing import ParseException
 
 from rflx.expression import FALSE, Variable
-from rflx.fsm_declaration import Argument, Renames, Subprogram, VariableDeclaration
+from rflx.fsm_declaration import Argument, PrivateVariable, Renames, Subprogram, VariableDeclaration
 from rflx.fsm_parser import FSMParser
 
 
@@ -77,3 +77,8 @@ class TestFSM(unittest.TestCase):
             ),
         )
         self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
+
+    def test_private_variable_declaration(self) -> None:
+        result = FSMParser.declaration().parseString("Hash_Context is private")[0]
+        expected = ("Hash_Context", PrivateVariable())
+        self.assertEqual(result, expected)

@@ -148,6 +148,13 @@ class FSM:
                 except Exception as e:
                     raise ModelError(f"error parsing global variable declaration {index} ({e})")
                 result[name] = declaration
+        if "types" in doc:
+            for index, f in enumerate(doc["types"]):
+                try:
+                    name, declaration = FSMParser.declaration().parseString(f)[0]
+                except Exception as e:
+                    raise ModelError(f"error parsing private variable declaration {index} ({e})")
+                result[name] = declaration
         return result
 
     @classmethod
