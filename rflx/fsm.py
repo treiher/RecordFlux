@@ -165,7 +165,7 @@ class FSM:
                 condition = TRUE
                 if "condition" in t:
                     try:
-                        condition = FSMParser.condition().parseString(t["condition"])[0]
+                        condition = FSMParser.expression().parseString(t["condition"])[0]
                     except ParseFatalException as e:
                         tname = t["target"]
                         raise ModelError(
