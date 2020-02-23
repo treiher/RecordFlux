@@ -37,10 +37,12 @@ class State(Element):
         name: StateName,
         transitions: Optional[Iterable[Transition]] = None,
         actions: Optional[Iterable[Statement]] = None,
+        declarations: Optional[Dict[str, Declaration]] = None,
     ):
         self.__name = name
         self.__transitions = transitions or []
         self.__actions = actions or []
+        self.__declarations = declarations or {}
 
     @property
     def name(self) -> StateName:
@@ -49,6 +51,10 @@ class State(Element):
     @property
     def transitions(self) -> Iterable[Transition]:
         return self.__transitions or []
+
+    @property
+    def declarations(self) -> Dict[str, Declaration]:
+        return self.__declarations
 
 
 class StateMachine(Element):
@@ -76,9 +82,10 @@ class StateMachine(Element):
 
     def __validate_conditions(self) -> None:
         for s in self.__states:
+            declarations = s.declarations
             for index, t in enumerate(s.transitions):
                 try:
-                    t.validate(self.__declarations)
+                    t.validate({**self.__declarations, **declarations})
                 except ValidationError as e:
                     raise ModelError(f"{e} in transition {index} of state {s.name.name}")
 
@@ -229,6 +236,39 @@ class FSM:
                 transitions.append(Transition(target=StateName(t["target"]), condition=condition))
         return transitions
 
+    def __parse_states(self, doc: Dict[str, Any]) -> List[State]:
+        states: List[State] = []
+        for s in doc["states"]:
+            sname = s["name"]
+            rest = s.keys() - ["name", "actions", "transitions", "variables", "doc"]
+            if rest:
+                elements = ", ".join(sorted(rest))
+                raise ModelError(f"unexpected elements [{elements}] in state {sname}")
+            actions: List[Statement] = []
+            if "actions" in s and s["actions"]:
+                for index, a in enumerate(s["actions"]):
+                    try:
+                        actions.append(FSMParser.action().parseString(a)[0])
+                    except Exception as e:
+                        raise ModelError(f"error parsing action {index} of state {sname} ({e})")
+            declarations: Dict[str, Declaration] = {}
+            if "variables" in s and s["variables"]:
+                for index, v in enumerate(s["variables"]):
+                    try:
+                        dname, declaration = FSMParser.declaration().parseString(v)[0]
+                    except Exception as e:
+                        raise ModelError(f"error parsing variable {index} of state {sname} ({e})")
+                    declarations[dname] = declaration
+            states.append(
+                State(
+                    name=StateName(s["name"]),
+                    transitions=self.__parse_transitions(s),
+                    actions=actions,
+                    declarations=declarations,
+                )
+            )
+        return states
+
     def __parse(self, name: str, doc: Dict[str, Any]) -> None:
         if "initial" not in doc:
             raise ModelError("missing initial state")
@@ -243,32 +283,11 @@ class FSM:
         if rest:
             raise ModelError("unexpected elements [{}]".format(", ".join(sorted(rest))))
 
-        states: List[State] = []
-        for s in doc["states"]:
-            state = s["name"]
-            rest = s.keys() - ["name", "actions", "transitions", "variables", "doc"]
-            if rest:
-                elements = ", ".join(sorted(rest))
-                raise ModelError(f"unexpected elements [{elements}] in state {state}")
-            transitions: List[Transition] = []
-            transitions = self.__parse_transitions(s)
-            actions: List[Statement] = []
-            if "actions" in s and s["actions"]:
-                for index, a in enumerate(s["actions"]):
-                    try:
-                        actions.append(FSMParser.action().parseString(a)[0])
-                    except Exception as e:
-                        sname = s["name"]
-                        raise ModelError(f"error parsing action {index} of state {sname} ({e})")
-            states.append(
-                State(name=StateName(s["name"]), transitions=transitions, actions=actions)
-            )
-
         fsm = StateMachine(
             name=name,
             initial=StateName(doc["initial"]),
             final=StateName(doc["final"]),
-            states=states,
+            states=self.__parse_states(doc),
             declarations=self.__parse_declarations(doc),
         )
         self.__fsms.append(fsm)

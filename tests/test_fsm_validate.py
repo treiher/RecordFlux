@@ -19,7 +19,7 @@ from rflx.fsm_expression import (
 from rflx.model import ModelError
 
 
-class TestFSM(unittest.TestCase):
+class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.maxDiff = None  # pylint: disable=invalid-name
 
@@ -198,3 +198,52 @@ class TestFSM(unittest.TestCase):
             ],
             declarations={"Defined": VariableDeclaration(Name("Some_Type"))},
         )
+
+    def test_declared_local_variable(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Name("Local"), Name("Global"))
+                        )
+                    ],
+                    declarations={"Local": VariableDeclaration(Name("Some_Type"))},
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Global": VariableDeclaration(Name("Some_Type"))},
+        )
+
+    def test_undeclared_local_variable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Undeclared variable Start_Local in transition 0 of state STATE"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("STATE"))],
+                        declarations={"Start_Local": VariableDeclaration(Name("Some_Type"))},
+                    ),
+                    State(
+                        name=StateName("STATE"),
+                        transitions=[
+                            Transition(
+                                target=StateName("END"),
+                                condition=Equal(Name("Start_Local"), Name("Global")),
+                            )
+                        ],
+                        declarations={"Local": VariableDeclaration(Name("Some_Type"))},
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Global": VariableDeclaration(Name("Some_Type"))},
+            )
