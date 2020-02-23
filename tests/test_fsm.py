@@ -426,3 +426,37 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             },
         )
         self.assertEqual(f.fsms[0], expected)
+
+    def test_fsm_with_variable_decl(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                variables:
+                    - \"Global : Boolean\"
+                states:
+                  - name: START
+                    variables:
+                        - \"Local : Boolean\"
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={"Local": VariableDeclaration(Variable("Boolean"))},
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+        )
+        self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
