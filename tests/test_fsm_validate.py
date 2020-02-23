@@ -15,6 +15,7 @@ from rflx.fsm_expression import (
     NotContains,
     String,
     SubprogramCall,
+    Valid,
 )
 from rflx.model import ModelError
 
@@ -247,3 +248,23 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ],
                 declarations={"Global": VariableDeclaration(Name("Some_Type"))},
             )
+
+    def test_declared_local_variable_valid(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Valid(Name("Global")), TRUE)
+                        )
+                    ],
+                    declarations={},
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+        )

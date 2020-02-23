@@ -757,8 +757,10 @@ class Name(Expr):
         return self
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
-        if self.name not in declarations:
+        if isinstance(self.name, str) and self.name not in declarations:
             raise ValidationError(f"Undeclared variable {self.name}")
+        if isinstance(self.name, Name) and self.name.name not in declarations:
+            raise ValidationError(f"Undeclared variable {self.name.name}")
 
     @property
     def representation(self) -> str:
