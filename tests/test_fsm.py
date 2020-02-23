@@ -1,8 +1,7 @@
 import unittest
 
-from rflx.expression import FALSE, Equal, Variable
+from rflx.expression import FALSE, Argument, Equal, Subprogram, Variable, VariableDeclaration
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
-from rflx.fsm_declaration import Argument, Subprogram
 from rflx.model import ModelError
 
 
@@ -265,6 +264,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             """
                 initial: START
                 final: END
+                variables:
+                    - "Error : Boolean"
                 states:
                   - name: START
                     transitions:
@@ -298,9 +299,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={},
+            declarations={"Error": VariableDeclaration(Variable("Boolean"))},
         )
-        self.assertEqual(f.fsms[0], expected)
+        self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
 
     def test_fsm_with_invalid_condition(self) -> None:
         with self.assertRaisesRegex(
@@ -331,11 +332,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             """
                 initial: START
                 final: END
+                variables:
+                    - "Error : Boolean"
+                    - "Something : Boolean"
                 states:
                   - name: START
                     transitions:
                       - target: INTERMEDIATE
-                        condition: Error = Message.Some_Error
+                        condition: Error = Something
                       - target: END
                   - name: INTERMEDIATE
                     transitions:
@@ -353,7 +357,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[
                         Transition(
                             target=StateName("INTERMEDIATE"),
-                            condition=Equal(Variable("Error"), Variable("Message.Some_Error")),
+                            condition=Equal(Variable("Error"), Variable("Something")),
                         ),
                         Transition(target=StateName("END")),
                     ],
@@ -364,7 +368,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={},
+            declarations={
+                "Error": VariableDeclaration(Variable("Boolean")),
+                "Something": VariableDeclaration(Variable("Boolean")),
+            },
         )
         self.assertEqual(f.fsms[0], expected)
 
