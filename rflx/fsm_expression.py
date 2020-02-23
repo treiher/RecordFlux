@@ -39,7 +39,9 @@ class Quantifier(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return Quantifier(
+            self.__quantifier, self.__iterable.simplified(facts), self.__predicate.simplified(facts)
+        )
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
@@ -55,9 +57,6 @@ class ForSome(Quantifier):
     def precedence(self) -> Precedence:
         return Precedence.undefined
 
-    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
-
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
@@ -70,9 +69,6 @@ class ForAll(Quantifier):
 
     @property
     def precedence(self) -> Precedence:
-        raise NotImplementedError
-
-    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
         raise NotImplementedError
 
     def z3expr(self) -> z3.ExprRef:
@@ -124,7 +120,7 @@ class SubprogramCall(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return SubprogramCall(self.__name, [a.simplified(facts) for a in self.__arguments])
 
     @property
     def precedence(self) -> Precedence:
@@ -146,7 +142,7 @@ class Field(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return Field(self.__expression.simplified(facts), self.__field)
 
     @property
     def precedence(self) -> Precedence:
@@ -173,7 +169,12 @@ class Comprehension(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return Comprehension(
+            self.__iterator,
+            self.__array.simplified(facts),
+            self.__selector.simplified(facts),
+            self.__condition.simplified(facts),
+        )
 
     @property
     def precedence(self) -> Precedence:
@@ -196,7 +197,9 @@ class MessageAggregate(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return MessageAggregate(
+            self.__name, {k: self.__data[k].simplified(facts) for k in self.__data}
+        )
 
     @property
     def precedence(self) -> Precedence:
@@ -219,7 +222,10 @@ class Binding(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        simplified_data = {Name(k): self.__data[k].simplified() for k in self.__data}
+        if facts:
+            simplified_data.update(facts)
+        return self.__expr.simplified(simplified_data)
 
     @property
     def precedence(self) -> Precedence:
@@ -240,7 +246,7 @@ class String(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        raise NotImplementedError
+        return self
 
     @property
     def precedence(self) -> Precedence:
