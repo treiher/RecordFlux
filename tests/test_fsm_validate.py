@@ -1,6 +1,7 @@
 import unittest
 
-from rflx.expression import Equal, Variable
+from rflx.expression import TRUE, Equal, Variable, VariableDeclaration
+from rflx.fsm import State, StateMachine, StateName, Transition
 from rflx.fsm_expression import (
     Binding,
     Comprehension,
@@ -15,6 +16,7 @@ from rflx.fsm_expression import (
     String,
     SubprogramCall,
 )
+from rflx.model import ModelError
 
 
 class TestFSM(unittest.TestCase):
@@ -157,3 +159,42 @@ class TestFSM(unittest.TestCase):
         expected = Conversion(Variable("Type"), Variable("A"))
         result = binding.simplified()
         self.assertEqual(result, expected)
+
+    def test_undeclared_variable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Undeclared variable Undefined in transition 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[
+                            Transition(
+                                target=StateName("END"), condition=Equal(Name("Undefined"), TRUE)
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={},
+            )
+
+    def test_declared_variable(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(target=StateName("END"), condition=Equal(Name("Defined"), TRUE))
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Defined": VariableDeclaration(Name("Some_Type"))},
+        )

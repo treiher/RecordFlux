@@ -3,8 +3,7 @@ from typing import Any, Dict, Iterable, List, Optional
 import yaml
 from pyparsing import ParseFatalException
 
-from rflx.expression import TRUE, Expr
-from rflx.fsm_declaration import Channel, Declaration
+from rflx.expression import TRUE, Channel, Declaration, Expr, ValidationError
 from rflx.fsm_parser import FSMParser
 from rflx.model import Element, ModelError
 from rflx.statement import Statement
@@ -27,6 +26,9 @@ class Transition(Element):
     @property
     def target(self) -> StateName:
         return self.__target
+
+    def validate(self, declarations: Dict[str, Declaration]) -> None:
+        self.__condition.validate(declarations)
 
 
 class State(Element):
@@ -70,6 +72,15 @@ class StateMachine(Element):
         self.__validate_state_existence()
         self.__validate_duplicate_states()
         self.__validate_state_reachability()
+        self.__validate_conditions()
+
+    def __validate_conditions(self) -> None:
+        for s in self.__states:
+            for index, t in enumerate(s.transitions):
+                try:
+                    t.validate(self.__declarations)
+                except ValidationError as e:
+                    raise ModelError(f"{e} in transition {index} of state {s.name.name}")
 
     def __validate_state_existence(self) -> None:
         state_names = [s.name for s in self.__states]

@@ -110,6 +110,9 @@ class Expr(ABC):
     def exists(self) -> ProofResult:
         return self.__solve()
 
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
+
 
 class BooleanLiteral(Expr):
     @abstractmethod
@@ -209,6 +212,10 @@ class BinExpr(Expr):
         left = self.left.simplified(facts)
         right = self.right.simplified(facts)
         return self.__class__(left, right)
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        self.left.validate(declarations)
+        self.right.validate(declarations)
 
     @abstractproperty
     def symbol(self) -> str:
@@ -748,6 +755,10 @@ class Name(Expr):
                 ), f'self-reference to "{positive_self}"'
                 return -facts[positive_self] if self.negative else facts[positive_self]
         return self
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        if self.name not in declarations:
+            raise ValidationError(f"Undeclared variable {self.name}")
 
     @property
     def representation(self) -> str:
@@ -1302,3 +1313,52 @@ class ValueRange(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+
+class ValidationError(Exception):
+    pass
+
+
+class Declaration(ABC):
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        return NotImplemented
+
+    def __repr__(self) -> str:
+        args = "\n\t" + ",\n\t".join(f"{k}={v!r}" for k, v in self.__dict__.items())
+        return f"{self.__class__.__name__}({args})".replace("\t", "\t    ")
+
+
+class Argument(Declaration):
+    def __init__(self, name: Name, typ: Name):
+        self.__name = name
+        self.__type = typ
+
+
+class VariableDeclaration(Declaration):
+    def __init__(self, typ: Name, init: Optional[Expr] = None):
+        self.__type = typ
+        self.__init = init
+
+
+class PrivateVariable(Declaration):
+    pass
+
+
+class Subprogram(Declaration):
+    def __init__(self, arguments: List[Argument], return_type: Name):
+        self.__arguments = arguments
+        self.__return_type = return_type
+
+
+class Renames(Declaration):
+    def __init__(self, typ: Name, expr: Expr):
+        self.__type = typ
+        self.__expr = expr
+
+
+class Channel(Declaration):
+    def __init__(self, read: bool, write: bool):
+        self.__read = read
+        self.__write = write
