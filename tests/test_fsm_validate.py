@@ -5,6 +5,7 @@ from rflx.fsm_expression import (
     Binding,
     Comprehension,
     Contains,
+    Conversion,
     Field,
     ForAll,
     ForSome,
@@ -142,5 +143,17 @@ class TestFSM(unittest.TestCase):
             SubprogramCall(Variable("Sub"), [Name("A"), Name("A")]), {"A": Variable("Baz")}
         )
         expected = SubprogramCall(Variable("Sub"), [Variable("Baz"), Variable("Baz")])
+        result = binding.simplified()
+        self.assertEqual(result, expected)
+
+    def test_binding_conversion(self) -> None:
+        binding = Binding(Conversion(Name("Type"), Name("A")), {"A": Variable("Baz")})
+        expected = Conversion(Variable("Type"), Variable("Baz"))
+        result = binding.simplified()
+        self.assertEqual(result, expected)
+
+    def test_binding_conversion_name_unchanged(self) -> None:
+        binding = Binding(Conversion(Name("Type"), Name("A")), {"Type": Variable("Baz")})
+        expected = Conversion(Variable("Type"), Variable("A"))
         result = binding.simplified()
         self.assertEqual(result, expected)

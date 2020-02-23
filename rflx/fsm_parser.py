@@ -28,16 +28,17 @@ from rflx.expression import (
     Length,
     Less,
     Mul,
+    Name,
     NotEqual,
     Or,
     Sub,
-    Variable,
 )
 from rflx.fsm_declaration import Argument, PrivateVariable, Renames, Subprogram, VariableDeclaration
 from rflx.fsm_expression import (
     Binding,
     Comprehension,
     Contains,
+    Conversion,
     Field,
     ForAll,
     ForSome,
@@ -61,29 +62,41 @@ class InternalError(Exception):
 class FSMParser:
     @classmethod
     def __parse_quantifier(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[1], Variable):
-            raise TypeError("quantifier not of type Variable")
+        if not isinstance(tokens[1], Name):
+            raise TypeError("quantifier not of type Name")
         if tokens[0] == "all":
             return ForAll(tokens[1], tokens[2], tokens[3])
         return ForSome(tokens[1], tokens[2], tokens[3])
 
     @classmethod
     def __parse_comprehension(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[0], Variable):
-            raise TypeError("quantifier not of type Variable")
+        if not isinstance(tokens[0], Name):
+            raise TypeError("quantifier not of type Name")
         condition = tokens[3] if len(tokens) > 3 else TRUE
         return Comprehension(tokens[0], tokens[1], tokens[2], condition)
 
     @classmethod
     def __parse_call(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[0], Variable):
-            raise TypeError("target not of type Variable")
+        if not isinstance(tokens[0], Name):
+            raise TypeError("target not of type Name")
         return SubprogramCall(tokens[0], tokens[1:])
+
+    @classmethod
+    def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
+        if not isinstance(tokens[0], Name):
+            raise TypeError("target not of type Name")
+        return Conversion(tokens[0], tokens[1])
+
+    @classmethod
+    def __name(cls) -> Token:
+        name = Parser.identifier()
+        name.setParseAction(lambda t: Name(t[0]))
+        return name
 
     @classmethod
     def __identifier(cls) -> Token:
         identifier = Parser.qualified_identifier()
-        identifier.setParseAction(lambda t: Variable(".".join(t)))
+        identifier.setParseAction(lambda t: Name(".".join(t)))
         return identifier
 
     @classmethod
@@ -171,8 +184,12 @@ class FSMParser:
         parameters = delimitedList(expression, delim=",")
 
         lpar, rpar = map(Suppress, "()")
-        function_call = cls.__identifier() + lpar + parameters + rpar
+
+        function_call = cls.__name() + lpar + parameters + rpar
         function_call.setParseAction(cls.__parse_call)
+
+        conversion = cls.__identifier() + lpar + expression + rpar
+        conversion.setParseAction(cls.__parse_conversion)
 
         quantifier = (
             Keyword("for").suppress()
@@ -216,6 +233,7 @@ class FSMParser:
             | quantifier
             | comprehension
             | function_call
+            | conversion
             | cls.__identifier()
         )
 
@@ -293,7 +311,7 @@ class FSMParser:
             cls.__identifier() + Literal("'").suppress() + attribute_designator + parameters
         )
         list_operation.setParseAction(
-            lambda t: Assignment(t[0], SubprogramCall(Variable(t[1]), [t[0], t[2]]))
+            lambda t: Assignment(t[0], SubprogramCall(Name(t[1]), [t[0], t[2]]))
         )
 
         list_reset = cls.__identifier() + Literal("'").suppress() + Keyword("Reset")
@@ -307,7 +325,7 @@ class FSMParser:
         lpar, rpar = map(Suppress, "()")
 
         parameter = Parser.identifier() + Literal(":").suppress() + cls.__identifier()
-        parameter.setParseAction(lambda t: Argument(Variable(t[0]), t[1]))
+        parameter.setParseAction(lambda t: Argument(Name(t[0]), t[1]))
 
         parameter_list = lpar + delimitedList(parameter, delim=";") + rpar
 

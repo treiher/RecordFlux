@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import List, Optional
 
-from rflx.expression import Expr, Variable
+from rflx.expression import Expr, Name
 
 
 class Declaration(ABC):
@@ -16,13 +16,13 @@ class Declaration(ABC):
 
 
 class Argument(Declaration):
-    def __init__(self, name: Variable, typ: Variable):
+    def __init__(self, name: Name, typ: Name):
         self.__name = name
         self.__type = typ
 
 
 class VariableDeclaration(Declaration):
-    def __init__(self, typ: Variable, init: Optional[Expr] = None):
+    def __init__(self, typ: Name, init: Optional[Expr] = None):
         self.__type = typ
         self.__init = init
 
@@ -32,13 +32,13 @@ class PrivateVariable(Declaration):
 
 
 class Subprogram(Declaration):
-    def __init__(self, arguments: List[Argument], return_type: Variable):
+    def __init__(self, arguments: List[Argument], return_type: Name):
         self.__arguments = arguments
         self.__return_type = return_type
 
 
 class Renames(Declaration):
-    def __init__(self, typ: Variable, expr: Expr):
+    def __init__(self, typ: Name, expr: Expr):
         self.__type = typ
         self.__expr = expr
 

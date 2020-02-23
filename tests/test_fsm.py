@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import FALSE, Equal, Variable
+from rflx.expression import FALSE, Equal, Name
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
 from rflx.fsm_declaration import Argument, Subprogram
 from rflx.model import ModelError
@@ -286,8 +286,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[
                         Transition(
-                            target=StateName("INTERMEDIATE"),
-                            condition=Equal(Variable("Error"), FALSE),
+                            target=StateName("INTERMEDIATE"), condition=Equal(Name("Error"), FALSE),
                         ),
                         Transition(target=StateName("END")),
                     ],
@@ -353,7 +352,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[
                         Transition(
                             target=StateName("INTERMEDIATE"),
-                            condition=Equal(Variable("Error"), Variable("Message.Some_Error")),
+                            condition=Equal(Name("Error"), Name("Message.Some_Error")),
                         ),
                         Transition(target=StateName("END")),
                     ],
@@ -410,11 +409,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ],
             declarations={
                 "Foo": Subprogram(
-                    [
-                        Argument(Variable("Bar"), Variable("T1")),
-                        Argument(Variable("Baz"), Variable("P1.T1")),
-                    ],
-                    Variable("P2.T3"),
+                    [Argument(Name("Bar"), Name("T1")), Argument(Name("Baz"), Name("P1.T1"))],
+                    Name("P2.T3"),
                 )
             },
         )

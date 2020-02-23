@@ -2,7 +2,7 @@ from typing import Dict, List, Mapping
 
 import z3
 
-from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation, Variable
+from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation
 
 
 class Valid(Attribute):
@@ -22,7 +22,7 @@ class Opaque(Attribute):
 
 
 class Quantifier(Expr):
-    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
+    def __init__(self, quantifier: Name, iteratable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
         self.__iterable = iteratable
         self.__predicate = predicate
@@ -108,7 +108,7 @@ class NotContains(Relation):
 
 
 class SubprogramCall(Expr):
-    def __init__(self, name: Variable, arguments: List[Expr]) -> None:
+    def __init__(self, name: Name, arguments: List[Expr]) -> None:
         self.__name = name
         self.__arguments = arguments
 
@@ -121,6 +121,28 @@ class SubprogramCall(Expr):
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
         return SubprogramCall(self.__name, [a.simplified(facts) for a in self.__arguments])
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class Conversion(Expr):
+    def __init__(self, name: Name, argument: Expr) -> None:
+        self.__name = name
+        self.__argument = argument
+
+    def __str__(self) -> str:
+        return f"{self.__name} ({self.__argument})"
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
+        return Conversion(self.__name, self.__argument.simplified(facts))
 
     @property
     def precedence(self) -> Precedence:
@@ -153,7 +175,7 @@ class Field(Expr):
 
 
 class Comprehension(Expr):
-    def __init__(self, iterator: Variable, array: Expr, selector: Expr, condition: Expr) -> None:
+    def __init__(self, iterator: Name, array: Expr, selector: Expr, condition: Expr) -> None:
         self.__iterator = iterator
         self.__array = array
         self.__selector = selector
@@ -185,7 +207,7 @@ class Comprehension(Expr):
 
 
 class MessageAggregate(Expr):
-    def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
+    def __init__(self, name: Name, data: Dict[str, Expr]) -> None:
         self.__name = name
         self.__data = data
 
