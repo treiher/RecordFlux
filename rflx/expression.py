@@ -817,7 +817,7 @@ class Variable(Name):
         return [self]
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
-        if self.name not in declarations:
+        if isinstance(self.name, str) and self.name not in declarations:
             raise ValidationError(f"Undeclared variable {self.name}")
 
     def z3expr(self) -> z3.ArithRef:
