@@ -1,8 +1,8 @@
-from typing import Dict, List, Mapping
+from typing import Callable, Dict, List, Mapping
 
 import z3
 
-from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation, Variable
+from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation, Variable, substitution
 
 
 class Valid(Attribute):
@@ -22,7 +22,7 @@ class Opaque(Attribute):
 
 
 class Quantifier(Expr):
-    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
+    def __init__(self, quantifier: Name, iteratable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
         self.__iterable = iteratable
         self.__predicate = predicate
@@ -37,6 +37,20 @@ class Quantifier(Expr):
     @property
     def precedence(self) -> Precedence:
         raise NotImplementedError
+
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, Quantifier):
+            return expr.__class__(
+                self.__quantifier,
+                self.__iterable.substituted(func),
+                self.__predicate.substituted(func),
+            )
+        return expr
 
     def simplified(self) -> Expr:
         return Quantifier(
@@ -108,7 +122,7 @@ class NotContains(Relation):
 
 
 class SubprogramCall(Expr):
-    def __init__(self, name: Variable, arguments: List[Expr]) -> None:
+    def __init__(self, name: Name, arguments: List[Expr]) -> None:
         self.__name = name
         self.__arguments = arguments
 
@@ -119,8 +133,50 @@ class SubprogramCall(Expr):
     def __neg__(self) -> Expr:
         raise NotImplementedError
 
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, SubprogramCall):
+            return expr.__class__(self.__name, [a.substituted(func) for a in self.__arguments])
+        return expr
+
     def simplified(self) -> Expr:
         return SubprogramCall(self.__name, [a.simplified() for a in self.__arguments])
+
+    @property
+    def precedence(self) -> Precedence:
+        raise NotImplementedError
+
+    def z3expr(self) -> z3.ExprRef:
+        raise NotImplementedError
+
+
+class Conversion(Expr):
+    def __init__(self, name: Name, argument: Expr) -> None:
+        self.__name = name
+        self.__argument = argument
+
+    def __str__(self) -> str:
+        return f"{self.__name} ({self.__argument})"
+
+    def __neg__(self) -> Expr:
+        raise NotImplementedError
+
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, Conversion):
+            return expr.__class__(self.__name, self.__argument.substituted(func))
+        return expr
+
+    def simplified(self) -> Expr:
+        return Conversion(self.__name, self.__argument.simplified())
 
     @property
     def precedence(self) -> Precedence:
@@ -141,6 +197,16 @@ class Field(Expr):
     def __neg__(self) -> Expr:
         raise NotImplementedError
 
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, Field):
+            return expr.__class__(self.__expression.substituted(func), self.__field)
+        return expr
+
     def simplified(self) -> Expr:
         return Field(self.__expression.simplified(), self.__field)
 
@@ -153,7 +219,7 @@ class Field(Expr):
 
 
 class Comprehension(Expr):
-    def __init__(self, iterator: Variable, array: Expr, selector: Expr, condition: Expr) -> None:
+    def __init__(self, iterator: Name, array: Expr, selector: Expr, condition: Expr) -> None:
         self.__iterator = iterator
         self.__array = array
         self.__selector = selector
@@ -167,6 +233,21 @@ class Comprehension(Expr):
 
     def __neg__(self) -> Expr:
         raise NotImplementedError
+
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, Comprehension):
+            return expr.__class__(
+                self.__iterator,
+                self.__array.substituted(func),
+                self.__selector.substituted(func),
+                self.__condition.substituted(func),
+            )
+        return expr
 
     def simplified(self) -> Expr:
         return Comprehension(
@@ -185,7 +266,7 @@ class Comprehension(Expr):
 
 
 class MessageAggregate(Expr):
-    def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
+    def __init__(self, name: Name, data: Dict[str, Expr]) -> None:
         self.__name = name
         self.__data = data
 
@@ -195,6 +276,18 @@ class MessageAggregate(Expr):
 
     def __neg__(self) -> Expr:
         raise NotImplementedError
+
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, MessageAggregate):
+            return expr.__class__(
+                self.__name, {k: self.__data[k].substituted(func) for k in self.__data}
+            )
+        return expr
 
     def simplified(self) -> Expr:
         return MessageAggregate(self.__name, {k: self.__data[k].simplified() for k in self.__data})
@@ -219,9 +312,26 @@ class Binding(Expr):
     def __neg__(self) -> Expr:
         raise NotImplementedError
 
+    def substituted(
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+    ) -> Expr:
+        assert (func and not mapping) or (not func and mapping is not None)
+        func = substitution(mapping or {}, func)
+        expr = func(self)
+        if isinstance(expr, Binding):
+            return expr.__class__(
+                self.__expr.substituted(func),
+                {n: e.substituted(func) for n, e in self.__data.items()},
+            )
+        return expr
+
     def simplified(self) -> Expr:
-        facts: Mapping[Name, Expr] = {Variable(k): self.__data[k].simplified() for k in self.__data}
-        return self.__expr.substituted(mapping=facts).simplified()
+        def subst(expression: Expr) -> Expr:
+            if isinstance(expression, Variable) and expression.name in self.__data:
+                return self.__data[expression.name]
+            return expression
+
+        return self.__expr.substituted(subst).simplified()
 
     @property
     def precedence(self) -> Precedence:
