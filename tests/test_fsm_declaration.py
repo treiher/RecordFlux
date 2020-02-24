@@ -13,6 +13,7 @@ from rflx.expression import (
     VariableDeclaration,
 )
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
+from rflx.fsm_expression import Field
 from rflx.fsm_parser import FSMParser
 from rflx.model import ModelError
 
@@ -83,7 +84,8 @@ class TestFSM(unittest.TestCase):
         expected = (
             "Certificate_Message",
             Renames(
-                Variable("TLS_Handshake.Certificate"), Variable("CCR_Handshake_Message.Payload")
+                Variable("TLS_Handshake.Certificate"),
+                Field(Variable("CCR_Handshake_Message"), "Payload"),
             ),
         )
         self.assertEqual(result, expected)

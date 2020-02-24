@@ -272,3 +272,24 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ],
             declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
+
+    def test_declared_local_variable_field(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"),
+                            condition=Equal(Field(Variable("Global"), "fld"), TRUE),
+                        )
+                    ],
+                    declarations={},
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+        )
