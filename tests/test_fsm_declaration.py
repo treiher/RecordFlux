@@ -6,6 +6,7 @@ from rflx.expression import (
     FALSE,
     Argument,
     Channel,
+    Name,
     PrivateVariable,
     Renames,
     Subprogram,
@@ -13,6 +14,7 @@ from rflx.expression import (
     VariableDeclaration,
 )
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
+from rflx.fsm_expression import Field
 from rflx.fsm_parser import FSMParser
 from rflx.model import ModelError
 
@@ -62,7 +64,7 @@ class TestFSM(unittest.TestCase):
         )[0]
         expected = (
             "Certificate_Authorities",
-            VariableDeclaration(Variable("TLS_Handshake.Certificate_Authorities")),
+            VariableDeclaration(Name("TLS_Handshake.Certificate_Authorities")),
         )
         self.assertEqual(result, expected)
 
@@ -83,7 +85,7 @@ class TestFSM(unittest.TestCase):
         expected = (
             "Certificate_Message",
             Renames(
-                Variable("TLS_Handshake.Certificate"), Variable("CCR_Handshake_Message.Payload")
+                Name("TLS_Handshake.Certificate"), Field(Name("CCR_Handshake_Message"), "Payload"),
             ),
         )
         self.assertEqual(result, expected)

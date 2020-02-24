@@ -43,11 +43,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_simple_equation(self) -> None:
         result = FSMParser.expression().parseString("Foo.Bar = abc")[0]
-        self.assertEqual(result, Equal(Name("Foo.Bar"), Name("abc")))
+        self.assertEqual(result, Equal(Field(Name("Foo"), "Bar"), Name("abc")))
 
     def test_simple_inequation(self) -> None:
         result = FSMParser.expression().parseString("Foo.Bar /= abc")[0]
-        self.assertEqual(result, NotEqual(Name("Foo.Bar"), Name("abc")))
+        self.assertEqual(result, NotEqual(Field(Name("Foo"), "Bar"), Name("abc")))
 
     def test_valid(self) -> None:
         result = FSMParser.expression().parseString("Something'Valid")[0]
@@ -126,7 +126,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_numeric_constant_expression(self) -> None:
         result = FSMParser.expression().parseString("Keystore_Message.Length = 0")[0]
-        self.assertEqual(result, Equal(Name("Keystore_Message.Length"), Number(0)))
+        self.assertEqual(result, Equal(Field(Name("Keystore_Message"), "Length"), Number(0)))
 
     def test_complex_expression(self) -> None:
         expr = (
@@ -139,12 +139,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         result = FSMParser.expression().parseString(expr)[0]
         expected = Or(
             Equal(Valid(Name("Keystore_Message")), FALSE),
-            NotEqual(Name("Keystore_Message.Tag"), Name("KEYSTORE_RESPONSE")),
-            NotEqual(Name("Keystore_Message.Request"), Name("KEYSTORE_REQUEST_PSK_IDENTITIES")),
+            NotEqual(Field(Name("Keystore_Message"), "Tag"), Name("KEYSTORE_RESPONSE")),
+            NotEqual(
+                Field(Name("Keystore_Message"), "Request"), Name("KEYSTORE_REQUEST_PSK_IDENTITIES")
+            ),
             And(
-                Equal(Name("Keystore_Message.Length"), Number(0)),
+                Equal(Field(Name("Keystore_Message"), "Length"), Number(0)),
                 NotContains(
-                    Name("TLS_Handshake.PSK_DHE_KE"), Name("Configuration.PSK_Key_Exchange_Modes"),
+                    Field(Name("TLS_Handshake"), "PSK_DHE_KE"),
+                    Field(Name("Configuration"), "PSK_Key_Exchange_Modes"),
                 ),
             ),
         )
@@ -163,13 +166,18 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         result = FSMParser.expression().parseString(expr)[0]
         expected = ForSome(
             Name("E"),
-            Name("Server_Hello_Message.Extensions"),
+            Field(Name("Server_Hello_Message"), "Extensions"),
             And(
-                Equal(Name("E.Tag"), Name("TLS_Handshake.EXTENSION_SUPPORTED_VERSIONS")),
+                Equal(
+                    Field(Name("E"), "Tag"),
+                    Field(Name("TLS_Handshake"), "EXTENSION_SUPPORTED_VERSIONS"),
+                ),
                 NotContains(
-                    Name("GreenTLS.TLS_1_3"),
+                    Field(Name("GreenTLS"), "TLS_1_3"),
                     Field(
-                        Conversion(Name("TLS_Handshake.Supported_Versions"), Name("E.Data")),
+                        Conversion(
+                            Name("TLS_Handshake.Supported_Versions"), Field(Name("E"), "Data"),
+                        ),
                         "Versions",
                     ),
                 ),
@@ -193,7 +201,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expr = "TLS_Handshake.Supported_Versions (E.Data) = 5"
         result = FSMParser.expression().parseString(expr)[0]
         expected = Equal(
-            Conversion(Name("TLS_Handshake.Supported_Versions"), Name("E.Data")), Number(5),
+            Conversion(Name("TLS_Handshake.Supported_Versions"), Field(Name("E"), "Data")),
+            Number(5),
         )
         self.assertEqual(result, expected)
 
@@ -201,9 +210,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         expr = "GreenTLS.TLS_1_3 not in TLS_Handshake.Supported_Versions (E.Data).Versions"
         result = FSMParser.expression().parseString(expr)[0]
         expected = NotContains(
-            Name("GreenTLS.TLS_1_3"),
+            Field(Name("GreenTLS"), "TLS_1_3"),
             Field(
-                Conversion(Name("TLS_Handshake.Supported_Versions"), Name("E.Data")), "Versions",
+                Conversion(Name("TLS_Handshake.Supported_Versions"), Field(Name("E"), "Data")),
+                "Versions",
             ),
         )
         self.assertEqual(result, expected, msg=f"\n\n{result}\n !=\n{expected}")
@@ -222,7 +232,13 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_gt(self) -> None:
         result = FSMParser.expression().parseString("Server_Name_Extension.Data_Length > 0")[0]
-        self.assertEqual(result, Greater(Name("Server_Name_Extension.Data_Length"), Number(0)))
+        self.assertEqual(
+            result, Greater(Field(Name("Server_Name_Extension"), "Data_Length"), Number(0))
+        )
+
+    def test_field_variable(self) -> None:
+        result = FSMParser.expression().parseString("Types.Bar")[0]
+        self.assertEqual(result, Field(Name("Types"), "Bar"))
 
     def test_field_simple(self) -> None:
         result = FSMParser.expression().parseString("Types.Bar (Foo).Fld")[0]
@@ -244,13 +260,16 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(
             result,
             Comprehension(
-                Name("E"), Name("List"), Name("E.Bar"), Equal(Name("E.Tag"), Name("Foo")),
+                Name("E"),
+                Name("List"),
+                Field(Name("E"), "Bar"),
+                Equal(Field(Name("E"), "Tag"), Name("Foo")),
             ),
         )
 
     def test_list_comprehension_without_condition(self) -> None:
         result = FSMParser.expression().parseString("[for K in PSKs => K.Identity]")[0]
-        expected = Comprehension(Name("K"), Name("PSKs"), Name("K.Identity"), TRUE)
+        expected = Comprehension(Name("K"), Name("PSKs"), Field(Name("K"), "Identity"), TRUE)
         self.assertEqual(result, expected)
 
     def test_head_attribute(self) -> None:
@@ -265,7 +284,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             result,
             Head(
                 Comprehension(
-                    Name("E"), Name("List"), Name("E.Bar"), Equal(Name("E.Tag"), Name("Foo")),
+                    Name("E"),
+                    Name("List"),
+                    Field(Name("E"), "Bar"),
+                    Equal(Field(Name("E"), "Tag"), Name("Foo")),
                 )
             ),
         )
@@ -283,7 +305,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             Field(
                 Head(
                     Comprehension(
-                        Name("E"), Name("List"), Name("E.Bar"), Equal(Name("E.Tag"), Name("Foo")),
+                        Name("E"),
+                        Name("List"),
+                        Field(Name("E"), "Bar"),
+                        Equal(Field(Name("E"), "Tag"), Name("Foo")),
                     )
                 ),
                 "Data",
@@ -306,10 +331,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                             Head(
                                 Comprehension(
                                     Name("E"),
-                                    Name("Client_Hello_Message.Extensions"),
+                                    Field(Name("Client_Hello_Message"), "Extensions"),
                                     Name("E"),
                                     Equal(
-                                        Name("E.Tag"), Name("TLS_Handshake.EXTENSION_KEY_SHARE"),
+                                        Field(Name("E"), "Tag"),
+                                        Field(Name("TLS_Handshake"), "EXTENSION_KEY_SHARE"),
                                     ),
                                 )
                             ),
@@ -318,7 +344,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     "Shares",
                 ),
-                Equal(Name("S.Group"), Name("Selected_Group")),
+                Equal(Field(Name("S"), "Group"), Name("Selected_Group")),
             ),
             FALSE,
         )

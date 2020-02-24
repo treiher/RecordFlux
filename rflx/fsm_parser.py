@@ -88,7 +88,7 @@ class FSMParser:
     @classmethod
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[0], Name):
-            raise TypeError("target not of type Name")
+            raise TypeError(f"target not of type Name or Field")
         return Conversion(tokens[0], tokens[1])
 
     @classmethod
@@ -98,9 +98,17 @@ class FSMParser:
         return name
 
     @classmethod
-    def __identifier(cls) -> Token:
+    def __qualified_identifier(cls) -> Token:
         identifier = Parser.qualified_identifier()
         identifier.setParseAction(lambda t: Name(".".join(t)))
+        return identifier
+
+    @classmethod
+    def __identifier(cls) -> Token:
+        identifier = Parser.qualified_identifier()
+        identifier.setParseAction(
+            lambda t: Field(Name(".".join(t[0:-1])), t[-1]) if t[0:-1] else Name(t[-1])
+        )
         return identifier
 
     @classmethod
@@ -165,8 +173,6 @@ class FSMParser:
                 result = Field(result, suffix[1])
             if suffix[0] == "Binding":
                 result = Binding(result, suffix[1])
-            if suffix[0] == "Aggregate":
-                result = MessageAggregate(result, suffix[1])
 
         return result
 
@@ -192,7 +198,7 @@ class FSMParser:
         function_call = cls.__name() + lpar + parameters + rpar
         function_call.setParseAction(cls.__parse_call)
 
-        conversion = cls.__identifier() + lpar + expression + rpar
+        conversion = cls.__qualified_identifier() + lpar + expression + rpar
         conversion.setParseAction(cls.__parse_conversion)
 
         quantifier = (
@@ -230,6 +236,15 @@ class FSMParser:
         terms = delimitedList(Parser.identifier() + Keyword("=").suppress() + expression, delim=",")
         terms.setParseAction(lambda t: dict(zip(t[0::2], t[1::2])))
 
+        aggregate = (
+            cls.__qualified_identifier()
+            + Literal("'").suppress()
+            + lpar
+            + (null_message | components)
+            + rpar
+        )
+        aggregate.setParseAction(lambda t: MessageAggregate(t[0], t[1]))
+
         atom = (
             Parser.numeric_literal()
             | boolean_literal
@@ -238,6 +253,7 @@ class FSMParser:
             | comprehension
             | function_call
             | conversion
+            | aggregate
             | cls.__identifier()
         )
 
@@ -258,10 +274,7 @@ class FSMParser:
         binding = Keyword("where").suppress() + terms
         binding.setParseAction(lambda t: ("Binding", t[0]))
 
-        aggregate = Literal("'").suppress() + lpar + (null_message | components) + rpar
-        aggregate.setParseAction(lambda t: ("Aggregate", t[0]))
-
-        suffix = binding ^ attribute ^ field ^ aggregate
+        suffix = binding ^ attribute ^ field
 
         op_comp = Keyword("<") | Keyword(">") | Keyword("=") | Keyword("/=")
 
@@ -328,7 +341,7 @@ class FSMParser:
 
         lpar, rpar = map(Suppress, "()")
 
-        parameter = Parser.identifier() + Literal(":").suppress() + cls.__identifier()
+        parameter = Parser.identifier() + Literal(":").suppress() + cls.__qualified_identifier()
         parameter.setParseAction(lambda t: Argument(Name(t[0]), t[1]))
 
         parameter_list = lpar + delimitedList(parameter, delim=";") + rpar
@@ -337,13 +350,15 @@ class FSMParser:
             Parser.identifier()
             + Optional(parameter_list)
             + Keyword("return").suppress()
-            + cls.__identifier()
+            + cls.__qualified_identifier()
         )
         function_decl.setParseAction(lambda t: (t[0], Subprogram(t[1:-1], t[-1])))
 
         initializer = Literal(":=").suppress() + cls.expression()
 
-        variable_base_decl = Parser.identifier() + Literal(":").suppress() + cls.__identifier()
+        variable_base_decl = (
+            Parser.identifier() + Literal(":").suppress() + cls.__qualified_identifier()
+        )
 
         variable_decl = variable_base_decl + Optional(initializer)
         variable_decl.setParseAction(
