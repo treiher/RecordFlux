@@ -29,7 +29,6 @@ from rflx.expression import (
     Length,
     Less,
     Mul,
-    Name,
     NotEqual,
     Or,
     PrivateVariable,
@@ -72,29 +71,29 @@ class InternalError(Exception):
 class FSMParser:
     @classmethod
     def __parse_quantifier(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[1], Name):
-            raise TypeError("quantifier not of type Name")
+        if not isinstance(tokens[1], Variable):
+            raise TypeError("quantifier not of type Variable")
         if tokens[0] == "all":
             return ForAll(tokens[1], tokens[2], tokens[3])
         return ForSome(tokens[1], tokens[2], tokens[3])
 
     @classmethod
     def __parse_comprehension(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[0], Name):
-            raise TypeError("quantifier not of type Name")
+        if not isinstance(tokens[0], Variable):
+            raise TypeError("quantifier not of type Variable")
         condition = tokens[3] if len(tokens) > 3 else TRUE
         return Comprehension(tokens[0], tokens[1], tokens[2], condition)
 
     @classmethod
     def __parse_call(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[0], Name):
-            raise TypeError("target not of type Name")
+        if not isinstance(tokens[0], Variable):
+            raise TypeError("target not of type Variable")
         return SubprogramCall(tokens[0], tokens[1:])
 
     @classmethod
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
-        if not isinstance(tokens[0], Name):
-            raise TypeError(f"target not of type Name or Field")
+        if not isinstance(tokens[0], Variable):
+            raise TypeError(f"target not of type Variable")
         return Conversion(tokens[0], tokens[1])
 
     @classmethod

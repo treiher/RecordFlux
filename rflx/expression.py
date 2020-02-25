@@ -1561,6 +1561,14 @@ class Channel(Declaration):
         self.__read = read
         self.__write = write
 
+    @property
+    def readable(self) -> bool:
+        return self.__read
+
+    @property
+    def writable(self) -> bool:
+        return self.__write
+
 
 def substitution(
     mapping: Mapping[Name, Expr], func: Callable[["Expr"], "Expr"] = None

@@ -4,12 +4,14 @@ import z3
 
 from rflx.expression import (
     Attribute,
+    Channel,
     Declaration,
     Expr,
     Name,
     Not,
     Precedence,
     Relation,
+    ValidationError,
     Variable,
     substitution,
 )
@@ -32,7 +34,7 @@ class Opaque(Attribute):
 
 
 class Quantifier(Expr):
-    def __init__(self, quantifier: Name, iteratable: Expr, predicate: Expr) -> None:
+    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
         self.__iterable = iteratable
         self.__predicate = predicate
@@ -49,7 +51,7 @@ class Quantifier(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -136,7 +138,7 @@ class NotContains(Relation):
 
 
 class SubprogramCall(Expr):
-    def __init__(self, name: Name, arguments: List[Expr]) -> None:
+    def __init__(self, name: Variable, arguments: List[Expr]) -> None:
         self.__name = name
         self.__arguments = arguments
 
@@ -148,7 +150,7 @@ class SubprogramCall(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -167,13 +169,35 @@ class SubprogramCall(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def __valid_channel(self, declarations: Mapping[str, Declaration]) -> bool:
+        args = self.__arguments
+        if len(args) < 1:
+            raise ValidationError(f"No channel argument in call to {self.__name}")
+        if self.__name.name in ["Read", "Write", "Call", "Data_Available"]:
+            if not isinstance(args[0], Variable) or not isinstance(args[0].name, str):
+                raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            if args[0].name not in declarations:
+                raise ValidationError(f"Undeclared channel in call to {self.__name}")
+            channel = declarations[args[0].name]
+            if not isinstance(channel, Channel):
+                raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            if self.__name.name in ["Write", "Call"] and not channel.writable:
+                raise ValidationError(f"Channel not writable in call to {self.__name}")
+            if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
+                raise ValidationError(f"Channel not readable in call to {self.__name}")
+            return True
+        return False
+
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        for a in self.__arguments:
-            a.validate(declarations)
+        if not self.__valid_channel(declarations):
+            if self.__name not in declarations:
+                raise ValidationError(f"Undeclared subprogram {self.__name} called")
+            for a in self.__arguments:
+                a.validate(declarations)
 
 
 class Conversion(Expr):
-    def __init__(self, name: Name, argument: Expr) -> None:
+    def __init__(self, name: Variable, argument: Expr) -> None:
         self.__name = name
         self.__argument = argument
 
@@ -184,7 +208,7 @@ class Conversion(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -219,7 +243,7 @@ class Field(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -243,7 +267,7 @@ class Field(Expr):
 
 
 class Comprehension(Expr):
-    def __init__(self, iterator: Name, array: Expr, selector: Expr, condition: Expr) -> None:
+    def __init__(self, iterator: Variable, array: Expr, selector: Expr, condition: Expr) -> None:
         self.__iterator = iterator
         self.__array = array
         self.__selector = selector
@@ -259,7 +283,7 @@ class Comprehension(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -295,7 +319,7 @@ class Comprehension(Expr):
 
 
 class MessageAggregate(Expr):
-    def __init__(self, name: Name, data: Dict[str, Expr]) -> None:
+    def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
         self.__name = name
         self.__data = data
 
@@ -307,7 +331,7 @@ class MessageAggregate(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
@@ -346,7 +370,7 @@ class Binding(Expr):
         raise NotImplementedError
 
     def substituted(
-        self, func: Callable[[Expr], Expr] = None, mapping: Mapping["Name", Expr] = None
+        self, func: Callable[[Expr], Expr] = None, mapping: Mapping[Name, Expr] = None
     ) -> Expr:
         assert (func and not mapping) or (not func and mapping is not None)
         func = substitution(mapping or {}, func)
