@@ -56,6 +56,10 @@ class State(Element):
     def declarations(self) -> Dict[str, Declaration]:
         return self.__declarations
 
+    @property
+    def actions(self) -> Iterable[Statement]:
+        return self.__actions
+
 
 class StateMachine(Element):
     def __init__(
@@ -79,6 +83,7 @@ class StateMachine(Element):
         self.__validate_duplicate_states()
         self.__validate_state_reachability()
         self.__validate_conditions()
+        self.__validate_actions()
 
     def __validate_conditions(self) -> None:
         for s in self.__states:
@@ -88,6 +93,15 @@ class StateMachine(Element):
                     t.validate({**self.__declarations, **declarations})
                 except ValidationError as e:
                     raise ModelError(f"{e} in transition {index} of state {s.name.name}")
+
+    def __validate_actions(self) -> None:
+        for s in self.__states:
+            declarations = s.declarations
+            for index, a in enumerate(s.actions):
+                try:
+                    a.validate({**self.__declarations, **declarations})
+                except ValidationError as e:
+                    raise ModelError(f"{e} in action {index} of state {s.name.name}")
 
     def __validate_state_existence(self) -> None:
         state_names = [s.name for s in self.__states]

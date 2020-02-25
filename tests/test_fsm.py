@@ -3,6 +3,7 @@ import unittest
 from rflx.expression import FALSE, Argument, Equal, Name, Subprogram, VariableDeclaration
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
 from rflx.model import ModelError
+from rflx.statement import Assignment
 
 
 class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
@@ -450,6 +451,41 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[Transition(target=StateName("END"))],
                     declarations={"Local": VariableDeclaration(Name("Boolean"))},
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+        )
+        self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
+
+    def test_fsm_with_actions(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                variables:
+                    - \"Global : Boolean\"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                    actions:
+                        - Global := False
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[Assignment(Name("Global"), FALSE)],
                 ),
                 State(name=StateName("END")),
             ],

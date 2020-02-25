@@ -1,6 +1,7 @@
 from abc import ABC
+from typing import Mapping
 
-from rflx.expression import Expr, Variable
+from rflx.expression import Declaration, Expr, Name, ValidationError
 
 
 class Statement(ABC):
@@ -13,27 +14,46 @@ class Statement(ABC):
         args = "\n\t" + ",\n\t".join(f"{k}={v!r}" for k, v in self.__dict__.items())
         return f"{self.__class__.__name__}({args})".replace("\t", "\t    ")
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        raise NotImplementedError
+
 
 class Assignment(Statement):
-    def __init__(self, name: Variable, expression: Expr) -> None:
+    def __init__(self, name: Name, expression: Expr) -> None:
         self.__name = name
         self.__expression = expression
 
     def __str__(self) -> str:
         return f"{self.__name} := {self.__expression}"
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        if self.__name.name not in declarations:
+            raise ValidationError(f"Assignment to undeclared variable {self.__name.name}")
+        try:
+            self.__expression.validate(declarations)
+        except ValidationError as e:
+            raise ValidationError(f"{e} in assignment")
+
 
 class Erase(Statement):
-    def __init__(self, name: Variable) -> None:
+    def __init__(self, name: Name) -> None:
         self.__name = name
 
     def __str__(self) -> str:
         return f"{self.__name} := null"
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        if self.__name.name not in declarations:
+            raise ValidationError(f"Erasure of undeclared variable {self.__name.name}")
+
 
 class Reset(Statement):
-    def __init__(self, name: Variable) -> None:
+    def __init__(self, name: Name) -> None:
         self.__name = name
 
     def __str__(self) -> str:
         return f"{self.__name}'Reset"
+
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        if self.__name.name not in declarations:
+            raise ValidationError(f"Reset of undeclared list {self.__name.name}")
