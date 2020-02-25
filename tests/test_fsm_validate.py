@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import TRUE, Equal, Variable, VariableDeclaration
+from rflx.expression import FALSE, TRUE, Equal, Variable, VariableDeclaration
 from rflx.fsm import State, StateMachine, StateName, Transition
 from rflx.fsm_expression import (
     Binding,
@@ -17,6 +17,7 @@ from rflx.fsm_expression import (
     Valid,
 )
 from rflx.model import ModelError
+from rflx.statement import Assignment, Erase, Reset
 
 
 class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
@@ -293,3 +294,83 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ],
             declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
+
+    def test_assignment_to_undeclared_variable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Assignment to undeclared variable Undefined in action 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[Assignment(Variable("Undefined"), FALSE)],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={},
+            )
+
+    def test_assignment_from_undeclared_variable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Undeclared variable Undefined in assignment in action 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[Assignment(Variable("Global"), Variable("Undefined"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+            )
+
+    def test_erasure_of_undeclared_variable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Erasure of undeclared variable Undefined in action 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[Erase(Variable("Undefined"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={},
+            )
+
+    def test_reset_of_undeclared_list(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^Reset of undeclared list Undefined in action 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[Reset(Variable("Undefined"))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={},
+            )
