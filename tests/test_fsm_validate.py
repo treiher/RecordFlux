@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import FALSE, TRUE, Channel, Equal, Variable, VariableDeclaration
+from rflx.expression import FALSE, TRUE, Channel, Equal, Subprogram, Variable, VariableDeclaration
 from rflx.fsm import State, StateMachine, StateName, Transition
 from rflx.fsm_expression import (
     Binding,
@@ -705,5 +705,54 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 declarations={
                     "Result": VariableDeclaration(Name("Boolean")),
                     "Channel": Channel(read=True, write=False),
+                },
+            )
+
+    def test_subprogram_call(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[Assignment(Name("Result"), SubprogramCall(Name("SubProg"), []))],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Result": VariableDeclaration(Name("Boolean")),
+                "SubProg": Subprogram([], Name("Boolean")),
+            },
+        )
+
+    def test_undeclared_variable_in_subprogram_call(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            r"^Undeclared variable Undefined \(parameter 0\) in call to SubProg "
+            "in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("SubProg"), [Name("Undefined")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "SubProg": Subprogram([], Name("Boolean")),
                 },
             )
