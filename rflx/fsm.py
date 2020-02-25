@@ -28,7 +28,7 @@ class Transition(Base):
         return self.__target
 
     def validate(self, declarations: Dict[str, Declaration]) -> None:
-        self.__condition.validate(declarations)
+        self.__condition.simplified().validate(declarations)
 
 
 class State(Base):

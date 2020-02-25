@@ -30,7 +30,7 @@ class Assignment(Statement):
         if self.__name.name not in declarations:
             raise ValidationError(f"Assignment to undeclared variable {self.__name.name}")
         try:
-            self.__expression.validate(declarations)
+            self.__expression.simplified().validate(declarations)
         except ValidationError as e:
             raise ValidationError(f"{e} in assignment")
 
