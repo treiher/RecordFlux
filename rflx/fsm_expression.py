@@ -169,31 +169,35 @@ class SubprogramCall(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
-    def __valid_channel(self, declarations: Mapping[str, Declaration]) -> bool:
+    def __valid_channel_operation(self, declarations: Mapping[str, Declaration]) -> bool:
+        if self.__name.name not in ["Read", "Write", "Call", "Data_Available"]:
+            return False
+
         args = self.__arguments
         if len(args) < 1:
             raise ValidationError(f"No channel argument in call to {self.__name}")
-        if self.__name.name in ["Read", "Write", "Call", "Data_Available"]:
-            if not isinstance(args[0], Variable) or not isinstance(args[0].name, str):
-                raise ValidationError(f"Invalid channel type in call to {self.__name}")
-            if args[0].name not in declarations:
-                raise ValidationError(f"Undeclared channel in call to {self.__name}")
-            channel = declarations[args[0].name]
-            if not isinstance(channel, Channel):
-                raise ValidationError(f"Invalid channel type in call to {self.__name}")
-            if self.__name.name in ["Write", "Call"] and not channel.writable:
-                raise ValidationError(f"Channel not writable in call to {self.__name}")
-            if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
-                raise ValidationError(f"Channel not readable in call to {self.__name}")
-            return True
-        return False
+        if not isinstance(args[0], Variable) or not isinstance(args[0].name, str):
+            raise ValidationError(f"Invalid channel type in call to {self.__name}")
+        if args[0].name not in declarations:
+            raise ValidationError(f"Undeclared channel in call to {self.__name}")
+        channel = declarations[args[0].name]
+        if not isinstance(channel, Channel):
+            raise ValidationError(f"Invalid channel type in call to {self.__name}")
+        if self.__name.name in ["Write", "Call"] and not channel.writable:
+            raise ValidationError(f"Channel not writable in call to {self.__name}")
+        if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
+            raise ValidationError(f"Channel not readable in call to {self.__name}")
+        return True
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        if not self.__valid_channel(declarations):
-            if self.__name not in declarations:
+        if not self.__valid_channel_operation(declarations):
+            if self.__name.name not in declarations:
                 raise ValidationError(f"Undeclared subprogram {self.__name} called")
-            for a in self.__arguments:
-                a.validate(declarations)
+            for index, a in enumerate(self.__arguments):
+                try:
+                    a.validate(declarations)
+                except ValidationError as e:
+                    raise ValidationError(f"{e} (parameter {index}) in call to {self.__name}")
 
 
 class Conversion(Expr):
