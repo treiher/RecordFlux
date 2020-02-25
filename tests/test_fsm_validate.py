@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import FALSE, TRUE, Equal, Variable, VariableDeclaration
+from rflx.expression import FALSE, TRUE, Channel, Equal, Variable, VariableDeclaration
 from rflx.fsm import State, StateMachine, StateName, Transition
 from rflx.fsm_expression import (
     Binding,
@@ -369,4 +369,341 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("END")),
                 ],
                 declarations={},
+            )
+
+    def test_call_to_undeclared_function(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Undeclared subprogram UndefSub called in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Global"), SubprogramCall(Name("UndefSub"), [Name("Global")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Global": VariableDeclaration(Name("Boolean"))},
+            )
+
+    def test_call_to_builtin_read(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("Global"), SubprogramCall(Name("Read"), [Name("Some_Channel")])
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Global": VariableDeclaration(Name("Boolean")),
+                "Some_Channel": Channel(read=True, write=False),
+            },
+        )
+
+    def test_call_to_builtin_write(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("Success"),
+                            SubprogramCall(Name("Write"), [Name("Some_Channel"), TRUE]),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Success": VariableDeclaration(Name("Boolean")),
+                "Some_Channel": Channel(read=False, write=True),
+            },
+        )
+
+    def test_call_to_builtin_call(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("Result"),
+                            SubprogramCall(Name("Call"), [Name("Some_Channel"), TRUE]),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Result": VariableDeclaration(Name("Boolean")),
+                "Some_Channel": Channel(read=True, write=True),
+            },
+        )
+
+    def test_call_to_builtin_data_available(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("Result"),
+                            SubprogramCall(Name("Data_Available"), [Name("Some_Channel")]),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Result": VariableDeclaration(Name("Boolean")),
+                "Some_Channel": Channel(read=True, write=True),
+            },
+        )
+
+    def test_call_to_builtin_read_without_arguments(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^No channel argument in call to Read in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[Assignment(Name("Result"), SubprogramCall(Name("Read"), []))],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+            )
+
+    def test_call_to_builtin_read_undeclared_channel(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Undeclared channel in call to Read in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Read"), [Name("Undeclared")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+            )
+
+    def test_call_to_builtin_read_invalid_channel_type(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Invalid channel type in call to Read in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Read"), [Name("Result")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+            )
+
+    def test_call_to_builtin_write_invalid_channel_mode(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Channel not writable in call to Write in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Write"), [Name("Out_Channel")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Out_Channel": Channel(read=True, write=False),
+                },
+            )
+
+    def test_call_to_builtin_data_available_invalid_channel_mode(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Channel not readable in call to Data_Available in "
+            "assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"),
+                                SubprogramCall(Name("Data_Available"), [Name("Out_Channel")]),
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Out_Channel": Channel(read=False, write=True),
+                },
+            )
+
+    def test_call_to_builtin_read_invalid_channel_mode(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Channel not readable in call to Read in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Read"), [Name("Channel")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Channel": Channel(read=False, write=True),
+                },
+            )
+
+    def test_call_to_builtin_call_channel_not_readable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Channel not readable in call to Call in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Call"), [Name("Channel")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Channel": Channel(read=False, write=True),
+                },
+            )
+
+    def test_call_to_builtin_call_channel_not_writable(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            "^Channel not writable in call to Call in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Name("Result"), SubprogramCall(Name("Call"), [Name("Channel")])
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Channel": Channel(read=True, write=False),
+                },
             )

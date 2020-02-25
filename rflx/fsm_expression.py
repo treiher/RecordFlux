@@ -2,7 +2,17 @@ from typing import Dict, List, Mapping
 
 import z3
 
-from rflx.expression import Attribute, Declaration, Expr, Name, Not, Precedence, Relation
+from rflx.expression import (
+    Attribute,
+    Channel,
+    Declaration,
+    Expr,
+    Name,
+    Not,
+    Precedence,
+    Relation,
+    ValidationError,
+)
 
 
 class Valid(Attribute):
@@ -133,9 +143,31 @@ class SubprogramCall(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def __valid_channel(self, declarations: Mapping[str, Declaration]) -> bool:
+        args = self.__arguments
+        if len(args) < 1:
+            raise ValidationError(f"No channel argument in call to {self.__name}")
+        if self.__name.name in ["Read", "Write", "Call", "Data_Available"]:
+            if not isinstance(args[0], Name) or not isinstance(args[0].name, str):
+                raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            if args[0].name not in declarations:
+                raise ValidationError(f"Undeclared channel in call to {self.__name}")
+            channel = declarations[args[0].name]
+            if not isinstance(channel, Channel):
+                raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            if self.__name.name in ["Write", "Call"] and not channel.writable:
+                raise ValidationError(f"Channel not writable in call to {self.__name}")
+            if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
+                raise ValidationError(f"Channel not readable in call to {self.__name}")
+            return True
+        return False
+
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        for a in self.__arguments:
-            a.validate(declarations)
+        if not self.__valid_channel(declarations):
+            if self.__name not in declarations:
+                raise ValidationError(f"Undeclared subprogram {self.__name} called")
+            for a in self.__arguments:
+                a.validate(declarations)
 
 
 class Conversion(Expr):
