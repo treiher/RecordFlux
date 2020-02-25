@@ -84,6 +84,7 @@ class StateMachine(Element):
         self.__validate_state_reachability()
         self.__validate_conditions()
         self.__validate_actions()
+        self.__validate_declarations()
 
     def __validate_conditions(self) -> None:
         for s in self.__states:
@@ -157,6 +158,11 @@ class StateMachine(Element):
         ]
         if detached:
             raise ModelError("detached states {states}".format(states=", ".join(detached)))
+
+    def __validate_declarations(self) -> None:
+        for k, d in self.__declarations.items():
+            if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
+                raise ModelError(f"{type(d).__name__} declaration shadows builtin subprogram {k.upper()}")
 
 
 class FSM:
