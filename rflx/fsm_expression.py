@@ -2,7 +2,7 @@ from typing import Dict, List, Mapping
 
 import z3
 
-from rflx.expression import Attribute, Expr, Name, Not, Precedence, Relation
+from rflx.expression import Attribute, Declaration, Expr, Name, Not, Precedence, Relation
 
 
 class Valid(Attribute):
@@ -45,6 +45,10 @@ class Quantifier(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        self.__iterable.validate(declarations)
+        self.__predicate.validate(declarations)
 
 
 class ForSome(Quantifier):
@@ -129,6 +133,10 @@ class SubprogramCall(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        for a in self.__arguments:
+            a.validate(declarations)
+
 
 class Conversion(Expr):
     def __init__(self, name: Name, argument: Expr) -> None:
@@ -151,6 +159,9 @@ class Conversion(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        self.__argument.validate(declarations)
+
 
 class Field(Expr):
     def __init__(self, expression: Expr, field: str) -> None:
@@ -172,6 +183,9 @@ class Field(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        self.__expression.validate(declarations)
 
 
 class Comprehension(Expr):
@@ -205,6 +219,11 @@ class Comprehension(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        self.__array.validate(declarations)
+        self.__selector.validate(declarations)
+        self.__condition.validate(declarations)
+
 
 class MessageAggregate(Expr):
     def __init__(self, name: Name, data: Dict[str, Expr]) -> None:
@@ -229,6 +248,10 @@ class MessageAggregate(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+    def validate(self, declarations: Mapping[str, Declaration]) -> None:
+        for k in self.__data:
+            self.__data[k].validate(declarations)
 
 
 class Binding(Expr):

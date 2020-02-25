@@ -111,7 +111,7 @@ class Expr(ABC):
         return self.__solve()
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
-        pass
+        raise NotImplementedError(f"Validation not implemented for {type(self).__name__}")
 
 
 class BooleanLiteral(Expr):
@@ -125,6 +125,9 @@ class BooleanLiteral(Expr):
 
     def simplified(self, facts: Mapping["Name", Expr] = None) -> Expr:
         return self
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
 
 
 class BooleanTrue(BooleanLiteral):
@@ -180,6 +183,9 @@ class Not(Expr):
         if isinstance(z3expr, z3.BoolRef):
             return z3.Not(z3expr)
         raise TypeError
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        self.expr.validate(declarations)
 
 
 class BinExpr(Expr):
@@ -312,6 +318,10 @@ class AssExpr(Expr):
         if len(terms) == 1:
             return terms[0]
         return self.__class__(*terms)
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        for term in self.terms:
+            term.validate(declarations)
 
     @abstractmethod
     def operation(self, left: int, right: int) -> int:
@@ -527,6 +537,9 @@ class Number(Expr):
 
     def z3expr(self) -> z3.ArithRef:
         return z3.IntVal(self.value)
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
 
 
 class Add(AssExpr):
