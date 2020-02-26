@@ -181,11 +181,18 @@ class StateMachine(Base):
         raise ModelError(f"Unsupported entity {type(declaration).__name__}")
 
     def __validate_declarations(self) -> None:
-        for k, d in self.__declarations.items():
+        declarations = self.__declarations
+        for k, d in declarations.items():
             if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
                 raise ModelError(
                     f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
                 )
+        for s in self.__states:
+            for decl in s.declarations:
+                if decl in declarations:
+                    raise ModelError(
+                        f"local variable {decl} shadows global declaration in state {s.name.name}"
+                    )
 
 
 class FSM:

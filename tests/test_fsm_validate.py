@@ -860,3 +860,22 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ],
                 declarations={"Data_Available": Renames(Variable("Boolean"), Variable("Foo.Bar"))},
             )
+
+    def test_local_variable_shadows_global(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^local variable Global shadows global declaration in state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+            )
