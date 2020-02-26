@@ -605,7 +605,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_write_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^channel not writable in call to Write in assignment in action 0 of state START",
+            "^channel Out_Channel not writable in call to Write"
+            " in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -634,7 +635,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_data_available_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^channel not readable in call to Data_Available in "
+            "^channel Out_Channel not readable in call to Data_Available in "
             "assignment in action 0 of state START",
         ):
             StateMachine(
@@ -666,7 +667,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_read_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^channel not readable in call to Read in assignment in action 0 of state START",
+            "^channel Channel not readable in call to Read "
+            "in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -695,7 +697,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_call_channel_not_readable(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^channel not readable in call to Call in assignment in action 0 of state START",
+            "^channel Channel not readable in call to Call in "
+            "assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -724,7 +727,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_call_channel_not_writable(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^channel not writable in call to Call in assignment in action 0 of state START",
+            "^channel Channel not writable in call to Call"
+            " in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
