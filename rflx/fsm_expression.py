@@ -13,6 +13,7 @@ from rflx.expression import (
     Relation,
     ValidationError,
     Variable,
+    VariableDeclaration,
     substitution,
 )
 
@@ -73,8 +74,11 @@ class Quantifier(Expr):
         raise NotImplementedError
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        self.__iterable.validate(declarations)
-        self.__predicate.validate(declarations)
+        quantifier: Mapping[str, Declaration] = {
+            self.__quantifier.name: VariableDeclaration()
+        } if isinstance(self.__quantifier.name, str) else {}
+        self.__iterable.validate({**declarations, **quantifier})
+        self.__predicate.validate({**declarations, **quantifier})
 
 
 class ForSome(Quantifier):

@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import unittest
 
 from rflx.expression import (
@@ -6,6 +7,7 @@ from rflx.expression import (
     Channel,
     Equal,
     Length,
+    Number,
     Renames,
     Subprogram,
     Variable,
@@ -985,4 +987,28 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 "Variable": VariableDeclaration(Variable("Boolean")),
                 "SubProg": Subprogram([], Variable("Boolean")),
             },
+        )
+
+    def test_for_all(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"),
+                            condition=ForAll(
+                                Variable("E"),
+                                Variable("List"),
+                                Equal(Field(Variable("E"), "Tag"), Number(42)),
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"List": VariableDeclaration(Variable("Foo"))},
         )
