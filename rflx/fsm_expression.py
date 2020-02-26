@@ -147,8 +147,18 @@ class SubprogramCall(Expr):
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
 
+    def __valid_list_operation(self) -> bool:
+        if isinstance(self.__name.name, str) and self.__name.name.upper() in ["APPEND", "EXTEND"]:
+            return True
+        return False
+
     def __valid_channel_operation(self, declarations: Mapping[str, Declaration]) -> bool:
-        if self.__name.name not in ["Read", "Write", "Call", "Data_Available"]:
+        if isinstance(self.__name.name, str) and self.__name.name.upper() not in [
+            "READ",
+            "WRITE",
+            "CALL",
+            "DATA_AVAILABLE",
+        ]:
             return False
 
         args = self.__arguments
@@ -169,7 +179,7 @@ class SubprogramCall(Expr):
         return True
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        if not self.__valid_channel_operation(declarations):
+        if not self.__valid_channel_operation(declarations) and not self.__valid_list_operation():
             if not isinstance(self.__name.name, str) or self.__name.name not in declarations:
                 raise ValidationError(f"undeclared subprogram {self.__name} called")
             declarations[self.__name.name].reference()

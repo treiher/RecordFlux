@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import unittest
 
 from rflx.expression import (
@@ -981,4 +982,54 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={"List": VariableDeclaration(Name("Foo"))},
+        )
+
+    def test_append_list_attribute(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("List"),
+                            SubprogramCall(Name("Append"), [Name("List"), Name("Element")]),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "List": VariableDeclaration(Name("List_Type")),
+                "Element": VariableDeclaration(Name("Element_Type")),
+            },
+        )
+
+    def test_extend_list_attribute(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("List"),
+                            SubprogramCall(Name("Extend"), [Name("List"), Name("Element")]),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "List": VariableDeclaration(Name("List_Type")),
+                "Element": VariableDeclaration(Name("Element_Type")),
+            },
         )

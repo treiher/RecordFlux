@@ -191,7 +191,7 @@ class StateMachine(Element):
                 if not s.declarations[decl].is_referenced:
                     raise ModelError(f"unused local variable {decl} in state {s.name.name}")
         for k, d in declarations.items():
-            if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
+            if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE", "APPEND", "EXTEND"]:
                 raise ModelError(
                     f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
                 )
