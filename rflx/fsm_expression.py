@@ -272,9 +272,12 @@ class Comprehension(Expr):
         raise NotImplementedError
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        self.__array.validate(declarations)
-        self.__selector.validate(declarations)
-        self.__condition.validate(declarations)
+        quantifier: Mapping[str, Declaration] = {
+            self.__iterator.name: VariableDeclaration()
+        } if isinstance(self.__iterator.name, str) else {}
+        self.__array.validate({**declarations, **quantifier})
+        self.__selector.validate({**declarations, **quantifier})
+        self.__condition.validate({**declarations, **quantifier})
 
 
 class MessageAggregate(Expr):

@@ -1035,7 +1035,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         )
 
     def test_aggregate_with_undefined_parameter(self) -> None:
-        with self.assertRaisesRegex(ModelError, "^undeclared variable Undef in assignment in action 0 of state START"):
+        with self.assertRaisesRegex(
+            ModelError, "^undeclared variable Undef in assignment in action 0 of state START"
+        ):
             StateMachine(
                 name="fsm",
                 initial=StateName("START"),
@@ -1043,14 +1045,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 states=[
                     State(
                         name=StateName("START"),
-                        transitions=[
-                            Transition(target=StateName("END"))
-                        ],
+                        transitions=[Transition(target=StateName("END"))],
                         declarations={},
                         actions=[
                             Assignment(
                                 Name("Data"),
-                                MessageAggregate(Name("Data_Type"), {"Foo": Name("Data"), "Bar": Name("Undef")}),
+                                MessageAggregate(
+                                    Name("Data_Type"), {"Foo": Name("Data"), "Bar": Name("Undef")}
+                                ),
                             )
                         ],
                     ),
@@ -1058,3 +1060,29 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ],
                 declarations={"Data": VariableDeclaration(Name("Data_Type"))},
             )
+
+    def test_comprehension(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    actions=[
+                        Assignment(
+                            Name("Input"),
+                            Comprehension(
+                                Name("K"),
+                                Name("Input"),
+                                Field(Name("K"), "Data"),
+                                Equal(Field(Name("K"), "Valid"), TRUE),
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Input": VariableDeclaration(Name("Foo"))},
+        )
