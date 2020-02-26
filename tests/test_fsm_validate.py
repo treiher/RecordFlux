@@ -1066,3 +1066,31 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 "Element": VariableDeclaration(Variable("Element_Type")),
             },
         )
+
+    def test_aggregate_with_undefined_parameter(self) -> None:
+        with self.assertRaisesRegex(
+            ModelError, "^undeclared variable Undef in assignment in action 0 of state START"
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                        actions=[
+                            Assignment(
+                                Variable("Data"),
+                                MessageAggregate(
+                                    Variable("Data_Type"),
+                                    {"Foo": Variable("Data"), "Bar": Variable("Undef")},
+                                ),
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Data": VariableDeclaration(Variable("Data_Type"))},
+            )
