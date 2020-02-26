@@ -5,6 +5,7 @@ from rflx.expression import (
     TRUE,
     Channel,
     Equal,
+    Length,
     Renames,
     Subprogram,
     Variable,
@@ -136,6 +137,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             Variable("E.Bar"),
             Equal(Variable("E.Tag"), Variable("Foo")),
         )
+        result = binding.simplified()
+        self.assertEqual(result, expected)
+
+    def test_binding_length(self) -> None:
+        binding = Binding(Length(Name("A")), {"A": Variable("Baz")})
+        expected = Length(Variable("Baz"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
@@ -923,3 +930,32 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ],
                 declarations={"Ren": Renames(Name("Boolean"), Name("Foo"))},
             )
+
+    def test_binding_as_subprogram_parameter(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Name("Result"),
+                            Binding(
+                                SubprogramCall(Name("SubProg"), [Length(Name("Bound"))]),
+                                {"Bound": Name("Variable")},
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Result": VariableDeclaration(Name("Boolean")),
+                "Variable": VariableDeclaration(Name("Boolean")),
+                "SubProg": Subprogram([], Name("Boolean")),
+            },
+        )

@@ -767,6 +767,8 @@ class Name(Expr):
                     positive_self not in facts[positive_self]
                 ), f'self-reference to "{positive_self}"'
                 return -facts[positive_self] if self.negative else facts[positive_self]
+            if isinstance(self.name, Name) and self.name in facts:
+                return Name(facts[self.name], self.negative)
         return self
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
