@@ -787,7 +787,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_function_declaration_is_no_builtin_read(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Subprogram declaration shadows builtin subprogram READ"
+            ModelError, "^subprogram declaration shadows builtin subprogram READ"
         ):
             StateMachine(
                 name="fsm",
@@ -806,7 +806,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_function_declaration_is_no_builtin_write(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Channel declaration shadows builtin subprogram WRITE"
+            ModelError, "^channel declaration shadows builtin subprogram WRITE"
         ):
             StateMachine(
                 name="fsm",
@@ -825,7 +825,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_function_declaration_is_no_builtin_call(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^VariableDeclaration declaration shadows builtin subprogram CALL"
+            ModelError, "^variable declaration shadows builtin subprogram CALL"
         ):
             StateMachine(
                 name="fsm",
@@ -844,7 +844,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_function_declaration_is_no_builtin_data_available(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Renames declaration shadows builtin subprogram DATA_AVAILABLE"
+            ModelError, "^renames declaration shadows builtin subprogram DATA_AVAILABLE"
         ):
             StateMachine(
                 name="fsm",
