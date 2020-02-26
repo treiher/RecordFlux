@@ -418,7 +418,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             states=[
                 State(
                     name=StateName("START"),
-                    transitions=[Transition(target=StateName("END"))],
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Global"), TRUE)
+                        )
+                    ],
                     declarations={},
                     actions=[
                         Assignment(
@@ -443,7 +447,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             states=[
                 State(
                     name=StateName("START"),
-                    transitions=[Transition(target=StateName("END"))],
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Success"), TRUE)
+                        )
+                    ],
                     declarations={},
                     actions=[
                         Assignment(
@@ -741,7 +749,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             states=[
                 State(
                     name=StateName("START"),
-                    transitions=[Transition(target=StateName("END"))],
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Result"), TRUE)
+                        )
+                    ],
                     declarations={},
                     actions=[
                         Assignment(Variable("Result"), SubprogramCall(Variable("SubProg"), []))
@@ -872,10 +884,48 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 states=[
                     State(
                         name=StateName("START"),
-                        transitions=[Transition(target=StateName("END"))],
+                        transitions=[
+                            Transition(
+                                target=StateName("END"), condition=Equal(Variable("Global"), TRUE)
+                            )
+                        ],
                         declarations={"Global": VariableDeclaration(Variable("Boolean"))},
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+            )
+
+    def test_unused_global_variable(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^unused variable Global"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={},
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
+            )
+
+    def test_unused_local_variable(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^unused local variable Data"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        declarations={"Data": VariableDeclaration(Variable("Boolean"))},
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={},
             )
