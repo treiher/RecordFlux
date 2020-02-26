@@ -195,6 +195,11 @@ class StateMachine(Element):
                 raise ModelError(
                     f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
                 )
+            try:
+                d.validate(declarations)
+            except ValidationError as e:
+                raise ModelError(f"{e} in global {self.__entity_name(d)} {k}")
+        for k, d in declarations.items():
             if not d.is_referenced:
                 raise ModelError(f"unused {self.__entity_name(d)} {k}")
 

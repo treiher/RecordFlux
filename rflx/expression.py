@@ -771,12 +771,14 @@ class Name(Expr):
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
         if isinstance(self.name, str):
+            if self.name in ["Boolean"]:
+                return
             if self.name not in declarations:
-                raise ValidationError(f"Undeclared variable {self.name}")
+                raise ValidationError(f"undeclared variable {self.name}")
             declarations[self.name].reference()
         if isinstance(self.name, Name):
             if not isinstance(self.name.name, str) or self.name.name not in declarations:
-                raise ValidationError(f"Undeclared variable {self.name.name}")
+                raise ValidationError(f"undeclared variable {self.name.name}")
             declarations[self.name.name].reference()
 
     @property
@@ -1354,6 +1356,9 @@ class Declaration(ABC):
     def reference(self) -> None:
         self.__refcount += 1
 
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        raise NotImplementedError(f"Validation not implemented for {type(self).__name__}")
+
     @property
     def is_referenced(self) -> bool:
         return self.__refcount > 0
@@ -1365,6 +1370,9 @@ class Argument(Declaration):
         self.__name = name
         self.__type = typ
 
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
+
 
 class VariableDeclaration(Declaration):
     def __init__(self, typ: Name, init: Optional[Expr] = None):
@@ -1372,9 +1380,13 @@ class VariableDeclaration(Declaration):
         self.__type = typ
         self.__init = init
 
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
+
 
 class PrivateVariable(Declaration):
-    pass
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass
 
 
 class Subprogram(Declaration):
@@ -1383,12 +1395,20 @@ class Subprogram(Declaration):
         self.__arguments = arguments
         self.__return_type = return_type
 
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        for a in self.__arguments:
+            a.validate(declarations)
+
 
 class Renames(Declaration):
     def __init__(self, typ: Name, expr: Expr):
         super().__init__()
         self.__type = typ
         self.__expr = expr
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        self.__type.validate(declarations)
+        self.__expr.validate(declarations)
 
 
 class Channel(Declaration):
@@ -1404,3 +1424,6 @@ class Channel(Declaration):
     @property
     def writable(self) -> bool:
         return self.__write
+
+    def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
+        pass

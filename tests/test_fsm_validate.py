@@ -173,7 +173,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_undeclared_variable(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Undeclared variable Undefined in transition 0 of state START"
+            ModelError, "^undeclared variable Undefined in transition 0 of state START"
         ):
             StateMachine(
                 name="fsm",
@@ -232,7 +232,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_undeclared_local_variable(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Undeclared variable Start_Local in transition 0 of state STATE"
+            ModelError, "^undeclared variable Start_Local in transition 0 of state STATE"
         ):
             StateMachine(
                 name="fsm",
@@ -322,7 +322,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_assignment_from_undeclared_variable(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Undeclared variable Undefined in assignment in action 0 of state START"
+            ModelError, "^undeclared variable Undefined in assignment in action 0 of state START"
         ):
             StateMachine(
                 name="fsm",
@@ -383,7 +383,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_undeclared_function(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Undeclared subprogram UndefSub called in assignment in action 0 of state START",
+            "^undeclared subprogram UndefSub called in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -511,7 +511,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_read_without_arguments(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^No channel argument in call to Read in assignment in action 0 of state START",
+            "^no channel argument in call to Read in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -532,7 +532,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_read_undeclared_channel(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Undeclared channel in call to Read in assignment in action 0 of state START",
+            "^undeclared channel in call to Read in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -557,7 +557,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_read_invalid_channel_type(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Invalid channel type in call to Read in assignment in action 0 of state START",
+            "^invalid channel type in call to Read in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -582,7 +582,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_write_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Channel not writable in call to Write in assignment in action 0 of state START",
+            "^channel not writable in call to Write in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -610,7 +610,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_data_available_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Channel not readable in call to Data_Available in "
+            "^channel not readable in call to Data_Available in "
             "assignment in action 0 of state START",
         ):
             StateMachine(
@@ -640,7 +640,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_read_invalid_channel_mode(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Channel not readable in call to Read in assignment in action 0 of state START",
+            "^channel not readable in call to Read in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -668,7 +668,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_call_channel_not_readable(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Channel not readable in call to Call in assignment in action 0 of state START",
+            "^channel not readable in call to Call in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -696,7 +696,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_call_to_builtin_call_channel_not_writable(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            "^Channel not writable in call to Call in assignment in action 0 of state START",
+            "^channel not writable in call to Call in assignment in action 0 of state START",
         ):
             StateMachine(
                 name="fsm",
@@ -746,7 +746,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_undeclared_variable_in_subprogram_call(self) -> None:
         with self.assertRaisesRegex(
             ModelError,
-            r"^Undeclared variable Undefined \(parameter 0\) in call to SubProg "
+            r"^undeclared variable Undefined \(parameter 0\) in call to SubProg "
             "in assignment in action 0 of state START",
         ):
             StateMachine(
@@ -903,4 +903,23 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("END")),
                 ],
                 declarations={},
+            )
+
+    def test_renames_references_undefined_variable(self) -> None:
+        with self.assertRaisesRegex(ModelError, "^undeclared variable Foo in global renames Ren"):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[
+                            Transition(target=StateName("END"), condition=Equal(Name("Ren"), TRUE))
+                        ],
+                        declarations={},
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={"Ren": Renames(Name("Boolean"), Name("Foo"))},
             )

@@ -583,6 +583,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             """
                 initial: START
                 final: END
+                variables:
+                    - "Bar : Boolean"
                 renames:
                     - "Foo : Boolean renames Bar"
                 states:
@@ -606,6 +608,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Foo": Renames(Name("Boolean"), Name("Bar"))},
+            declarations={
+                "Foo": Renames(Name("Boolean"), Name("Bar")),
+                "Bar": VariableDeclaration(Name("Boolean")),
+            },
         )
         self.assertEqual(f.fsms[0], expected)
