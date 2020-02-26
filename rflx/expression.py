@@ -1409,7 +1409,6 @@ class Renames(Declaration):
         self.__expr = expr
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
-        self.__type.validate(declarations)
         self.__expr.validate(declarations)
 
 
