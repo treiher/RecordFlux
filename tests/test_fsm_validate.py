@@ -1094,3 +1094,29 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ],
                 declarations={"Data": VariableDeclaration(Variable("Data_Type"))},
             )
+
+    def test_comprehension(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    actions=[
+                        Assignment(
+                            Variable("Input"),
+                            Comprehension(
+                                Variable("K"),
+                                Variable("Input"),
+                                Field(Variable("K"), "Data"),
+                                Equal(Field(Variable("K"), "Valid"), TRUE),
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"Input": VariableDeclaration(Variable("Foo"))},
+        )
