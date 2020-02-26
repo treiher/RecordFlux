@@ -168,13 +168,14 @@ class SubprogramCall(Expr):
             raise ValidationError(f"invalid channel type in call to {self.__name}")
         if args[0].name not in declarations:
             raise ValidationError(f"undeclared channel in call to {self.__name}")
-        channel = declarations[args[0].name]
+        channel_name = args[0].name
+        channel = declarations[channel_name]
         if not isinstance(channel, Channel):
             raise ValidationError(f"invalid channel type in call to {self.__name}")
         if self.__name.name in ["Write", "Call"] and not channel.writable:
-            raise ValidationError(f"channel not writable in call to {self.__name}")
+            raise ValidationError(f"channel {channel_name} not writable in call to {self.__name}")
         if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
-            raise ValidationError(f"channel not readable in call to {self.__name}")
+            raise ValidationError(f"channel {channel_name} not readable in call to {self.__name}")
         channel.reference()
         return True
 
