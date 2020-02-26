@@ -6,6 +6,7 @@ from rflx.expression import (
     Channel,
     Equal,
     Length,
+    Number,
     Renames,
     Subprogram,
     Variable,
@@ -958,4 +959,26 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 "Variable": VariableDeclaration(Name("Boolean")),
                 "SubProg": Subprogram([], Name("Boolean")),
             },
+        )
+
+    def test_for_all(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"),
+                            condition=ForAll(
+                                Name("E"), Name("List"), Equal(Field(Name("E"), "Tag"), Number(42))
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={"List": VariableDeclaration(Name("Foo"))},
         )

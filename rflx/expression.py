@@ -1377,7 +1377,7 @@ class Argument(Declaration):
 
 
 class VariableDeclaration(Declaration):
-    def __init__(self, typ: Name, init: Optional[Expr] = None):
+    def __init__(self, typ: Optional[Name] = None, init: Optional[Expr] = None):
         super().__init__()
         self.__type = typ
         self.__init = init
