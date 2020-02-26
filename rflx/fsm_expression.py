@@ -175,25 +175,25 @@ class SubprogramCall(Expr):
 
         args = self.__arguments
         if len(args) < 1:
-            raise ValidationError(f"No channel argument in call to {self.__name}")
+            raise ValidationError(f"no channel argument in call to {self.__name}")
         if not isinstance(args[0], Variable) or not isinstance(args[0].name, str):
-            raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            raise ValidationError(f"invalid channel type in call to {self.__name}")
         if args[0].name not in declarations:
-            raise ValidationError(f"Undeclared channel in call to {self.__name}")
+            raise ValidationError(f"undeclared channel in call to {self.__name}")
         channel = declarations[args[0].name]
         if not isinstance(channel, Channel):
-            raise ValidationError(f"Invalid channel type in call to {self.__name}")
+            raise ValidationError(f"invalid channel type in call to {self.__name}")
         if self.__name.name in ["Write", "Call"] and not channel.writable:
-            raise ValidationError(f"Channel not writable in call to {self.__name}")
+            raise ValidationError(f"channel not writable in call to {self.__name}")
         if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
-            raise ValidationError(f"Channel not readable in call to {self.__name}")
+            raise ValidationError(f"channel not readable in call to {self.__name}")
         channel.reference()
         return True
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
         if not self.__valid_channel_operation(declarations):
             if not isinstance(self.__name.name, str) or self.__name.name not in declarations:
-                raise ValidationError(f"Undeclared subprogram {self.__name} called")
+                raise ValidationError(f"undeclared subprogram {self.__name} called")
             declarations[self.__name.name].reference()
         for index, a in enumerate(self.__arguments):
             try:
