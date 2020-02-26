@@ -182,17 +182,21 @@ class StateMachine(Element):
 
     def __validate_declarations(self) -> None:
         declarations = self.__declarations
-        for k, d in declarations.items():
-            if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
-                raise ModelError(
-                    f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
-                )
         for s in self.__states:
             for decl in s.declarations:
                 if decl in declarations:
                     raise ModelError(
                         f"local variable {decl} shadows global declaration in state {s.name.name}"
                     )
+                if not s.declarations[decl].is_referenced:
+                    raise ModelError(f"unused local variable {decl} in state {s.name.name}")
+        for k, d in declarations.items():
+            if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
+                raise ModelError(
+                    f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
+                )
+            if not d.is_referenced:
+                raise ModelError(f"unused {self.__entity_name(d)} {k}")
 
 
 class FSM:

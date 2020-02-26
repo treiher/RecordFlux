@@ -1,7 +1,18 @@
 import unittest
 
-from rflx.expression import FALSE, Argument, Equal, Name, Renames, Subprogram, VariableDeclaration
+from rflx.expression import (
+    FALSE,
+    Argument,
+    Equal,
+    Greater,
+    Name,
+    Number,
+    Renames,
+    Subprogram,
+    VariableDeclaration,
+)
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
+from rflx.fsm_expression import SubprogramCall
 from rflx.model import ModelError
 from rflx.statement import Assignment
 
@@ -404,6 +415,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                   - name: START
                     transitions:
                       - target: END
+                        condition: Foo (100, 200) > 1000
                   - name: END
             """,
         )
@@ -412,7 +424,18 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             initial=StateName("START"),
             final=StateName("END"),
             states=[
-                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(
+                            target=StateName("END"),
+                            condition=Greater(
+                                SubprogramCall(Name("Foo"), [Number(100), Number(200)]),
+                                Number(1000),
+                            ),
+                        )
+                    ],
+                ),
                 State(name=StateName("END")),
             ],
             declarations={
@@ -439,6 +462,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         - \"Local : Boolean\"
                     transitions:
                       - target: END
+                        condition: Local = Global
                   - name: END
             """,
         )
@@ -449,7 +473,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             states=[
                 State(
                     name=StateName("START"),
-                    transitions=[Transition(target=StateName("END"))],
+                    transitions=[
+                        Transition(
+                            target=StateName("END"), condition=Equal(Name("Local"), Name("Global"))
+                        )
+                    ],
                     declarations={"Local": VariableDeclaration(Name("Boolean"))},
                 ),
                 State(name=StateName("END")),
@@ -561,6 +589,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                   - name: START
                     transitions:
                       - target: END
+                        condition: Foo = False
                   - name: END
             """,
         )
@@ -569,7 +598,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             initial=StateName("START"),
             final=StateName("END"),
             states=[
-                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(
+                    name=StateName("START"),
+                    transitions=[
+                        Transition(target=StateName("END"), condition=Equal(Name("Foo"), FALSE))
+                    ],
+                ),
                 State(name=StateName("END")),
             ],
             declarations={"Foo": Renames(Name("Boolean"), Name("Bar"))},

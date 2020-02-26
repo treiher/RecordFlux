@@ -161,17 +161,19 @@ class SubprogramCall(Expr):
             raise ValidationError(f"Channel not writable in call to {self.__name}")
         if self.__name.name in ["Call", "Read", "Data_Available"] and not channel.readable:
             raise ValidationError(f"Channel not readable in call to {self.__name}")
+        channel.reference()
         return True
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
         if not self.__valid_channel_operation(declarations):
-            if self.__name.name not in declarations:
+            if not isinstance(self.__name.name, str) or self.__name.name not in declarations:
                 raise ValidationError(f"Undeclared subprogram {self.__name} called")
-            for index, a in enumerate(self.__arguments):
-                try:
-                    a.validate(declarations)
-                except ValidationError as e:
-                    raise ValidationError(f"{e} (parameter {index}) in call to {self.__name}")
+            declarations[self.__name.name].reference()
+        for index, a in enumerate(self.__arguments):
+            try:
+                a.validate(declarations)
+            except ValidationError as e:
+                raise ValidationError(f"{e} (parameter {index}) in call to {self.__name}")
 
 
 class Conversion(Expr):

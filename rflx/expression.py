@@ -770,10 +770,14 @@ class Name(Expr):
         return self
 
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
-        if isinstance(self.name, str) and self.name not in declarations:
-            raise ValidationError(f"Undeclared variable {self.name}")
-        if isinstance(self.name, Name) and self.name.name not in declarations:
-            raise ValidationError(f"Undeclared variable {self.name.name}")
+        if isinstance(self.name, str):
+            if self.name not in declarations:
+                raise ValidationError(f"Undeclared variable {self.name}")
+            declarations[self.name].reference()
+        if isinstance(self.name, Name):
+            if not isinstance(self.name.name, str) or self.name.name not in declarations:
+                raise ValidationError(f"Undeclared variable {self.name.name}")
+            declarations[self.name.name].reference()
 
     @property
     def representation(self) -> str:
@@ -1335,6 +1339,9 @@ class ValidationError(Exception):
 
 
 class Declaration(ABC):
+    def __init__(self) -> None:
+        self.__refcount = 0
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             return self.__dict__ == other.__dict__
@@ -1344,15 +1351,24 @@ class Declaration(ABC):
         args = "\n\t" + ",\n\t".join(f"{k}={v!r}" for k, v in self.__dict__.items())
         return f"{self.__class__.__name__}({args})".replace("\t", "\t    ")
 
+    def reference(self) -> None:
+        self.__refcount += 1
+
+    @property
+    def is_referenced(self) -> bool:
+        return self.__refcount > 0
+
 
 class Argument(Declaration):
     def __init__(self, name: Name, typ: Name):
+        super().__init__()
         self.__name = name
         self.__type = typ
 
 
 class VariableDeclaration(Declaration):
     def __init__(self, typ: Name, init: Optional[Expr] = None):
+        super().__init__()
         self.__type = typ
         self.__init = init
 
@@ -1363,18 +1379,21 @@ class PrivateVariable(Declaration):
 
 class Subprogram(Declaration):
     def __init__(self, arguments: List[Argument], return_type: Name):
+        super().__init__()
         self.__arguments = arguments
         self.__return_type = return_type
 
 
 class Renames(Declaration):
     def __init__(self, typ: Name, expr: Expr):
+        super().__init__()
         self.__type = typ
         self.__expr = expr
 
 
 class Channel(Declaration):
     def __init__(self, read: bool, write: bool):
+        super().__init__()
         self.__read = read
         self.__write = write
 

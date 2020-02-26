@@ -14,9 +14,10 @@ from rflx.expression import (
     VariableDeclaration,
 )
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
-from rflx.fsm_expression import Field
+from rflx.fsm_expression import Field, SubprogramCall
 from rflx.fsm_parser import FSMParser
 from rflx.model import ModelError
+from rflx.statement import Assignment
 
 
 class TestFSM(unittest.TestCase):
@@ -113,6 +114,11 @@ class TestFSM(unittest.TestCase):
                   - name: START
                     transitions:
                       - target: END
+                    variables:
+                      - "Local : Boolean"
+                    actions:
+                      - Local := Write(Channel1_Read_Write, Read(Channel2_Read))
+                      - Local := Write(Channel3_Write, Local)
                   - name: END
             """,
         )
@@ -121,7 +127,27 @@ class TestFSM(unittest.TestCase):
             initial=StateName("START"),
             final=StateName("END"),
             states=[
-                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={"Local": VariableDeclaration(Name("Boolean"))},
+                    actions=[
+                        Assignment(
+                            Name("Local"),
+                            SubprogramCall(
+                                Name("Write"),
+                                [
+                                    Name("Channel1_Read_Write"),
+                                    SubprogramCall(Name("Read"), [Name("Channel2_Read")]),
+                                ],
+                            ),
+                        ),
+                        Assignment(
+                            Name("Local"),
+                            SubprogramCall(Name("Write"), [Name("Channel3_Write"), Name("Local")],),
+                        ),
+                    ],
+                ),
                 State(name=StateName("END")),
             ],
             declarations={

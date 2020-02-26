@@ -27,12 +27,13 @@ class Assignment(Statement):
         return f"{self.__name} := {self.__expression}"
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
-        if self.__name.name not in declarations:
+        if not isinstance(self.__name.name, str) or self.__name.name not in declarations:
             raise ValidationError(f"Assignment to undeclared variable {self.__name.name}")
         try:
             self.__expression.simplified().validate(declarations)
         except ValidationError as e:
             raise ValidationError(f"{e} in assignment")
+        declarations[self.__name.name].reference()
 
 
 class Erase(Statement):
