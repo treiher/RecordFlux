@@ -1012,3 +1012,57 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ],
             declarations={"List": VariableDeclaration(Variable("Foo"))},
         )
+
+    def test_append_list_attribute(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Variable("List"),
+                            SubprogramCall(
+                                Variable("Append"), [Variable("List"), Variable("Element")]
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "List": VariableDeclaration(Variable("List_Type")),
+                "Element": VariableDeclaration(Variable("Element_Type")),
+            },
+        )
+
+    def test_extend_list_attribute(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    declarations={},
+                    actions=[
+                        Assignment(
+                            Variable("List"),
+                            SubprogramCall(
+                                Variable("Extend"), [Variable("List"), Variable("Element")]
+                            ),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "List": VariableDeclaration(Variable("List_Type")),
+                "Element": VariableDeclaration(Variable("Element_Type")),
+            },
+        )
