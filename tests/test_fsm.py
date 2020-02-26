@@ -1,6 +1,6 @@
 import unittest
 
-from rflx.expression import FALSE, Argument, Equal, Name, Subprogram, VariableDeclaration
+from rflx.expression import FALSE, Argument, Equal, Name, Renames, Subprogram, VariableDeclaration
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
 from rflx.model import ModelError
 from rflx.statement import Assignment
@@ -492,3 +492,86 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             declarations={"Global": VariableDeclaration(Name("Boolean"))},
         )
         self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
+
+    def test_duplicate_variable(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                variables:
+                    - "Foo : Boolean"
+                    - "Foo : Some_Type"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            r"^conflicting variable Foo",
+        )
+
+    def test_variable_shadowing_channel_name(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                channels:
+                    - name: Foo
+                      mode: Read
+                variables:
+                    - "Foo : Boolean"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            r"^conflicting channel Foo",
+        )
+
+    def test_channel_shadowing_rename(self) -> None:
+        self.assert_parse_exception_string(
+            """
+                initial: START
+                final: END
+                channels:
+                    - name: Foo
+                      mode: Read
+                renames:
+                    - "Foo : Boolean renames Bar"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+            r"^conflicting renames Foo",
+        )
+
+    def test_fsm_with_renames(self) -> None:
+        f = FSM()
+        f.parse_string(
+            "fsm",
+            """
+                initial: START
+                final: END
+                renames:
+                    - "Foo : Boolean renames Bar"
+                states:
+                  - name: START
+                    transitions:
+                      - target: END
+                  - name: END
+            """,
+        )
+        expected = StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(name=StateName("START"), transitions=[Transition(target=StateName("END"))]),
+                State(name=StateName("END")),
+            ],
+            declarations={"Foo": Renames(Name("Boolean"), Name("Bar"))},
+        )
+        self.assertEqual(f.fsms[0], expected)

@@ -3,7 +3,16 @@ from typing import Any, Dict, Iterable, List, Optional
 import yaml
 from pyparsing import ParseFatalException
 
-from rflx.expression import TRUE, Channel, Declaration, Expr, ValidationError
+from rflx.expression import (
+    TRUE,
+    Channel,
+    Declaration,
+    Expr,
+    Renames,
+    Subprogram,
+    ValidationError,
+    VariableDeclaration,
+)
 from rflx.fsm_parser import FSMParser
 from rflx.model import Element, ModelError
 from rflx.statement import Statement
@@ -159,10 +168,24 @@ class StateMachine(Element):
         if detached:
             raise ModelError("detached states {states}".format(states=", ".join(detached)))
 
+    @classmethod
+    def __entity_name(cls, declaration: Declaration) -> str:
+        if isinstance(declaration, Subprogram):
+            return "subprogram"
+        if isinstance(declaration, VariableDeclaration):
+            return "variable"
+        if isinstance(declaration, Renames):
+            return "renames"
+        if isinstance(declaration, Channel):
+            return "channel"
+        raise ModelError(f"Unsupported entity {type(declaration).__name__}")
+
     def __validate_declarations(self) -> None:
         for k, d in self.__declarations.items():
             if k.upper() in ["READ", "WRITE", "CALL", "DATA_AVAILABLE"]:
-                raise ModelError(f"{type(d).__name__} declaration shadows builtin subprogram {k.upper()}")
+                raise ModelError(
+                    f"{self.__entity_name(d)} declaration shadows builtin subprogram {k.upper()}"
+                )
 
 
 class FSM:
@@ -178,6 +201,8 @@ class FSM:
                 name, declaration = FSMParser.declaration().parseString(f)[0]
             except Exception as e:
                 raise ModelError(f"error parsing global function declaration {index} ({e})")
+            if name in result:
+                raise ModelError(f"conflicting function {name}")
             result[name] = declaration
 
     @classmethod
@@ -189,6 +214,8 @@ class FSM:
                 name, declaration = FSMParser.declaration().parseString(f)[0]
             except Exception as e:
                 raise ModelError(f"error parsing global variable declaration {index} ({e})")
+            if name in result:
+                raise ModelError(f"conflicting variable {name}")
             result[name] = declaration
 
     @classmethod
@@ -200,6 +227,8 @@ class FSM:
                 name, declaration = FSMParser.declaration().parseString(f)[0]
             except Exception as e:
                 raise ModelError(f"error parsing private variable declaration {index} ({e})")
+            if name in result:
+                raise ModelError(f"conflicting type {name}")
             result[name] = declaration
 
     @classmethod
@@ -216,11 +245,26 @@ class FSM:
                 "Write": {"read": False, "write": True},
                 "Read_Write": {"read": True, "write": True},
             }
+            if f["name"] in result:
+                raise ModelError(f'conflicting channel {f["name"]}')
             mode = f["mode"]
             try:
                 result[f["name"]] = Channel(modes[mode]["read"], modes[mode]["write"])
             except KeyError:
                 raise ModelError(f"Channel {f['name']} has invalid mode {mode}")
+
+    @classmethod
+    def __parse_renames(cls, doc: Dict[str, Any], result: Dict[str, Declaration]) -> None:
+        if "renames" not in doc:
+            return
+        for index, f in enumerate(doc["renames"]):
+            try:
+                name, declaration = FSMParser.declaration().parseString(f)[0]
+            except Exception as e:
+                raise ModelError(f"error parsing renames declaration {index} ({e})")
+            if name in result:
+                raise ModelError(f"conflicting renames {name}")
+            result[name] = declaration
 
     @classmethod
     def __parse_declarations(cls, doc: Dict[str, Any]) -> Dict[str, Declaration]:
@@ -229,6 +273,7 @@ class FSM:
         cls.__parse_variables(doc, result)
         cls.__parse_types(doc, result)
         cls.__parse_channels(doc, result)
+        cls.__parse_renames(doc, result)
         return result
 
     @classmethod

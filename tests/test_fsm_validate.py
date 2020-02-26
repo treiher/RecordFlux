@@ -1,6 +1,15 @@
 import unittest
 
-from rflx.expression import FALSE, TRUE, Channel, Equal, Renames, Subprogram, Variable, VariableDeclaration
+from rflx.expression import (
+    FALSE,
+    TRUE,
+    Channel,
+    Equal,
+    Renames,
+    Subprogram,
+    Variable,
+    VariableDeclaration,
+)
 from rflx.fsm import State, StateMachine, StateName, Transition
 from rflx.fsm_expression import (
     Binding,
@@ -759,7 +768,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_function_declaration_is_no_builtin_read(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Subprogram declaration shadows builtin subprogram READ"
+            ModelError, "^subprogram declaration shadows builtin subprogram READ"
         ):
             StateMachine(
                 name="fsm",
@@ -773,14 +782,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={
-                    "Read": Subprogram([], Name("Boolean")),
-                },
+                declarations={"Read": Subprogram([], Name("Boolean"))},
             )
 
     def test_function_declaration_is_no_builtin_write(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Channel declaration shadows builtin subprogram WRITE"
+            ModelError, "^channel declaration shadows builtin subprogram WRITE"
         ):
             StateMachine(
                 name="fsm",
@@ -794,14 +801,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={
-                    "Write": Channel(read=True, write=False),
-                },
+                declarations={"Write": Channel(read=True, write=False)},
             )
 
     def test_function_declaration_is_no_builtin_call(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Variable declaration shadows builtin subprogram CALL"
+            ModelError, "^variable declaration shadows builtin subprogram CALL"
         ):
             StateMachine(
                 name="fsm",
@@ -815,14 +820,12 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={
-                    "Call": Variable(Name("Boolean")),
-                },
+                declarations={"Call": VariableDeclaration(Name("Boolean"))},
             )
 
     def test_function_declaration_is_no_builtin_data_available(self) -> None:
         with self.assertRaisesRegex(
-            ModelError, "^Renames declaration shadows builtin subprogram DATA_AVAILABLE"
+            ModelError, "^renames declaration shadows builtin subprogram DATA_AVAILABLE"
         ):
             StateMachine(
                 name="fsm",
@@ -836,7 +839,5 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={
-                    "Data_Available": Renames(Name("Boolean"), Name("Foo.Bar")),
-                },
+                declarations={"Data_Available": Renames(Name("Boolean"), Name("Foo.Bar"))},
             )
