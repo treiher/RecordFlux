@@ -61,6 +61,13 @@ def main(argv: List[str]) -> Union[int, str]:
 
     parser_fsm = subparsers.add_parser("fsm", help="load fsm")
     parser_fsm.add_argument("files", metavar="FILE", type=str, nargs="+", help="fsm file")
+    parser_fsm.add_argument(
+        "-f",
+        "--format",
+        type=str,
+        choices=["dot", "jpg", "pdf", "png", "raw", "svg"],
+        help=(f"output graph with specified format"),
+    )
     parser_fsm.set_defaults(func=fsm)
 
     args = parser.parse_args(argv[1:])
@@ -156,4 +163,9 @@ def fsm(args: argparse.Namespace) -> None:
 
         print(f"Loading FSM {f}... ", end="")
         state_machine.parse(f, f)
+
+        if args.format:
+            for sm in state_machine.fsms:
+                with open(f"{sm.name}.{args.format}", "wb") as g:
+                    Graph(sm).write(g, fmt=args.format)
         print("OK")
