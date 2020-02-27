@@ -778,10 +778,12 @@ class Name(Expr):
             if self.name not in declarations:
                 raise ValidationError(f"undeclared variable {self.name}")
             declarations[self.name].reference()
-        if isinstance(self.name, Name):
+        elif isinstance(self.name, Name):
             if not isinstance(self.name.name, str) or self.name.name not in declarations:
                 raise ValidationError(f"undeclared variable {self.name.name}")
             declarations[self.name.name].reference()
+        else:
+            self.name.validate(declarations)
 
     @property
     def representation(self) -> str:
