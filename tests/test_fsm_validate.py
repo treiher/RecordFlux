@@ -181,6 +181,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         result = binding.simplified()
         self.assertEqual(result, expected)
 
+    def test_binding_opaque(self) -> None:
+        binding = Binding(
+            Opaque(SubprogramCall(Variable("Sub"), [Variable("Bound")])), {"Bound": Variable("Foo")}
+        )
+        expected = Opaque(SubprogramCall(Variable("Sub"), [Variable("Foo")]))
+        result = binding.simplified()
+        self.assertEqual(result, expected, msg=f"\n\n{repr(expected)}\n !=\n{repr(result)}")
+
     def test_undeclared_variable(self) -> None:
         with self.assertRaisesRegex(
             ModelError, "^undeclared variable Undefined in transition 0 of state START"
@@ -1172,6 +1180,35 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         Assignment(
                             Variable("Data"),
                             Opaque(SubprogramCall(Variable("Sub"), [Variable("Data")]),),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Data": VariableDeclaration(Variable("Foo")),
+                "Sub": Subprogram(
+                    [Argument(Variable("Param"), Variable("Param_Type"))], Variable("Result_Type")
+                ),
+            },
+        )
+
+    def test_assignment_opaque_subprogram_binding(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    actions=[
+                        Assignment(
+                            Variable("Data"),
+                            Binding(
+                                Opaque(SubprogramCall(Variable("Sub"), [Variable("Bound")])),
+                                {"Bound": Variable("Data")},
+                            ),
                         )
                     ],
                 ),

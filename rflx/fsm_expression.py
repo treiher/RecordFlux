@@ -31,7 +31,10 @@ class Head(Attribute):
 
 
 class Opaque(Attribute):
-    pass
+    def simplified(self) -> Expr:
+        if isinstance(self.prefix, Expr):
+            return Opaque(self.prefix.simplified())
+        return self
 
 
 class Quantifier(Expr):
