@@ -11,13 +11,11 @@ log = logging.getLogger(__name__)
 
 
 class Graph:
-    def __init__(self, message: Message) -> None:
-        self.__message = copy(message)
-        if not self.__message.structure:
-            self.__message.structure = [Link(INITIAL, FINAL)]
+    def __init__(self, data: Message) -> None:
+        self.__data = copy(data)
 
     def __target_size(self, link: Link) -> str:
-        return str(self.__message.field_size(link.target))
+        return str(self.__data.field_size(link.target))
 
     def __edge_label(self, link: Link) -> str:
         return "({cond},{sep1}{length},{sep2}{first})".format(
@@ -30,8 +28,18 @@ class Graph:
 
     @property
     def get(self) -> Dot:
+        if isinstance(self.__data, Message):
+            return self.__get_message
+        raise TypeError
+
+    @property
+    def __get_message(self) -> Dot:
         """Return pydot graph representation of message."""
-        result = Dot(graph_name=self.__message.full_name)
+
+        if not self.__data.structure:
+            self.__data.structure = [Link(INITIAL, FINAL)]
+
+        result = Dot(graph_name=self.__data.full_name)
         result.set_graph_defaults(splines="ortho", ranksep="0.8 equally")
         result.set_edge_defaults(fontname="Fira Code", fontcolor="#6f6f6f", color="#6f6f6f")
         result.set_node_defaults(
@@ -46,9 +54,9 @@ class Graph:
         result.add_node(
             Node(name="Initial", fillcolor="#ffffff", shape="circle", width="0.5", label="")
         )
-        for f in self.__message.fields:
+        for f in self.__data.fields:
             result.add_node(Node(name=f.name))
-        for l in self.__message.structure:
+        for l in self.__data.structure:
             result.add_edge(Edge(src=l.source.name, dst=l.target.name, xlabel=self.__edge_label(l)))
         result.add_node(
             Node(name="Final", fillcolor="#6f6f6f", shape="circle", width="0.5", label="")
