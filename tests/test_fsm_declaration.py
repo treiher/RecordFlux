@@ -6,7 +6,7 @@ from rflx.expression import (
     FALSE,
     Argument,
     Channel,
-    PrivateVariable,
+    PrivateDeclaration,
     Renames,
     Subprogram,
     Variable,
@@ -93,7 +93,7 @@ class TestFSM(unittest.TestCase):
 
     def test_private_variable_declaration(self) -> None:
         result = FSMParser.declaration().parseString("Hash_Context is private")[0]
-        expected = ("Hash_Context", PrivateVariable())
+        expected = ("Hash_Context", PrivateDeclaration())
         self.assertEqual(result, expected)
 
     def test_channels(self) -> None:

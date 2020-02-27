@@ -8,6 +8,7 @@ from rflx.expression import (
     Channel,
     Declaration,
     Expr,
+    PrivateDeclaration,
     Renames,
     Subprogram,
     ValidationError,
@@ -178,6 +179,8 @@ class StateMachine(Base):
             return "renames"
         if isinstance(declaration, Channel):
             return "channel"
+        if isinstance(declaration, PrivateDeclaration):
+            return "private declaration"
         raise ModelError(f"Unsupported entity {type(declaration).__name__}")
 
     def __validate_declarations(self) -> None:
@@ -200,6 +203,10 @@ class StateMachine(Base):
             except ValidationError as e:
                 raise ModelError(f"{e} in global {self.__entity_name(d)} {k}")
         for k, d in declarations.items():
+            # pylint: disable=fixme
+            # FIXME: We do not validate variable declarations at the moment
+            if isinstance(d, PrivateDeclaration):
+                return
             if not d.is_referenced:
                 raise ModelError(f"unused {self.__entity_name(d)} {k}")
 
