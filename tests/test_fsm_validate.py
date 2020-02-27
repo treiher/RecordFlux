@@ -182,6 +182,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         result = binding.simplified()
         self.assertEqual(result, expected)
 
+    def test_binding_opaque(self) -> None:
+        binding = Binding(
+            Opaque(SubprogramCall(Name("Sub"), [Name("Bound")])), {"Bound": Name("Foo")}
+        )
+        expected = Opaque(SubprogramCall(Name("Sub"), [Name("Foo")]))
+        result = binding.simplified()
+        self.assertEqual(result, expected, msg=f"\n\n{repr(expected)}\n !=\n{repr(result)}")
+
     def test_undeclared_variable(self) -> None:
         with self.assertRaisesRegex(
             ModelError, "^undeclared variable Undefined in transition 0 of state START"
@@ -1137,6 +1145,35 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         Assignment(
                             Name("Data"),
                             Opaque(SubprogramCall(Variable("Sub"), [Variable("Data")]),),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Data": VariableDeclaration(Name("Foo")),
+                "Sub": Subprogram(
+                    [Argument(Name("Param"), Name("Param_Type"))], Name("Result_Type")
+                ),
+            },
+        )
+
+    def test_assignment_opaque_subprogram_binding(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    actions=[
+                        Assignment(
+                            Name("Data"),
+                            Binding(
+                                Opaque(SubprogramCall(Name("Sub"), [Name("Bound")])),
+                                {"Bound": Name("Data")},
+                            ),
                         )
                     ],
                 ),

@@ -29,7 +29,10 @@ class Head(Attribute):
 
 
 class Opaque(Attribute):
-    pass
+    def simplified(self, facts: Mapping["Name", Expr] = None) -> Expr:
+        if isinstance(self.name, Expr):
+            return Opaque(self.name.simplified(facts))
+        return self
 
 
 class Quantifier(Expr):
