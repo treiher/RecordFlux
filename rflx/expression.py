@@ -1388,7 +1388,7 @@ class VariableDeclaration(Declaration):
         pass
 
 
-class PrivateVariable(Declaration):
+class PrivateDeclaration(Declaration):
     def validate(self, declarations: Mapping[str, "Declaration"]) -> None:
         pass
 
