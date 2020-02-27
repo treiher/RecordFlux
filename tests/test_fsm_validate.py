@@ -4,6 +4,7 @@ import unittest
 from rflx.expression import (
     FALSE,
     TRUE,
+    Argument,
     Channel,
     Equal,
     Length,
@@ -24,6 +25,7 @@ from rflx.fsm_expression import (
     ForSome,
     MessageAggregate,
     NotContains,
+    Opaque,
     String,
     SubprogramCall,
     Valid,
@@ -1123,4 +1125,62 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={"Input": VariableDeclaration(Variable("Foo"))},
+        )
+
+    def test_assignment_opaque_subprogram_undef_parameter(self,) -> None:
+        with self.assertRaisesRegex(
+            ModelError,
+            r"^undeclared variable UndefData \(parameter 0\) in call "
+            "to Sub in assignment in action 0 of state START",
+        ):
+            StateMachine(
+                name="fsm",
+                initial=StateName("START"),
+                final=StateName("END"),
+                states=[
+                    State(
+                        name=StateName("START"),
+                        transitions=[Transition(target=StateName("END"))],
+                        actions=[
+                            Assignment(
+                                Variable("Data"),
+                                Opaque(SubprogramCall(Variable("Sub"), [Variable("UndefData")]),),
+                            )
+                        ],
+                    ),
+                    State(name=StateName("END")),
+                ],
+                declarations={
+                    "Data": VariableDeclaration(Variable("Foo")),
+                    "Sub": Subprogram(
+                        [Argument(Variable("Param"), Variable("Param_Type"))],
+                        Variable("Result_Type"),
+                    ),
+                },
+            )
+
+    def test_assignment_opaque_subprogram_result(self) -> None:  # pylint: disable=no-self-use
+        StateMachine(
+            name="fsm",
+            initial=StateName("START"),
+            final=StateName("END"),
+            states=[
+                State(
+                    name=StateName("START"),
+                    transitions=[Transition(target=StateName("END"))],
+                    actions=[
+                        Assignment(
+                            Variable("Data"),
+                            Opaque(SubprogramCall(Variable("Sub"), [Variable("Data")]),),
+                        )
+                    ],
+                ),
+                State(name=StateName("END")),
+            ],
+            declarations={
+                "Data": VariableDeclaration(Variable("Foo")),
+                "Sub": Subprogram(
+                    [Argument(Variable("Param"), Variable("Param_Type"))], Variable("Result_Type")
+                ),
+            },
         )
