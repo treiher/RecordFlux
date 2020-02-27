@@ -37,6 +37,10 @@ class Transition(Base):
     def target(self) -> StateName:
         return self.__target
 
+    @property
+    def condition(self) -> Expr:
+        return self.__condition
+
     def validate(self, declarations: Dict[str, Declaration]) -> None:
         self.__condition.simplified().validate(declarations)
 
@@ -209,6 +213,22 @@ class StateMachine(Base):
                 return
             if not d.is_referenced:
                 raise ModelError(f"unused {self.__entity_name(d)} {k}")
+
+    @property
+    def name(self) -> str:
+        return self.__name
+
+    @property
+    def initial(self) -> StateName:
+        return self.__initial
+
+    @property
+    def final(self) -> StateName:
+        return self.__final
+
+    @property
+    def states(self) -> Iterable[State]:
+        return self.__states
 
 
 class FSM:
