@@ -412,7 +412,7 @@ class Binding(Expr):
     def simplified(self) -> Expr:
         def subst(expression: Expr) -> Expr:
             if isinstance(expression, Variable) and expression.name in self.__data:
-                return self.__data[expression.name]
+                return self.__data[expression.name].simplified()
             return expression
 
         return self.__expr.substituted(subst).simplified()
