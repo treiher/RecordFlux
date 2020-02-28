@@ -6,7 +6,6 @@ from rflx.expression import (
     FALSE,
     Argument,
     Channel,
-    Name,
     PrivateDeclaration,
     Renames,
     Subprogram,
@@ -65,7 +64,7 @@ class TestFSM(unittest.TestCase):
         )[0]
         expected = (
             "Certificate_Authorities",
-            VariableDeclaration(Name("TLS_Handshake.Certificate_Authorities")),
+            VariableDeclaration(Variable("TLS_Handshake.Certificate_Authorities")),
         )
         self.assertEqual(result, expected)
 
@@ -86,7 +85,8 @@ class TestFSM(unittest.TestCase):
         expected = (
             "Certificate_Message",
             Renames(
-                Name("TLS_Handshake.Certificate"), Field(Name("CCR_Handshake_Message"), "Payload"),
+                Variable("TLS_Handshake.Certificate"),
+                Field(Variable("CCR_Handshake_Message"), "Payload"),
             ),
         )
         self.assertEqual(result, expected)
@@ -130,21 +130,23 @@ class TestFSM(unittest.TestCase):
                 State(
                     name=StateName("START"),
                     transitions=[Transition(target=StateName("END"))],
-                    declarations={"Local": VariableDeclaration(Name("Boolean"))},
+                    declarations={"Local": VariableDeclaration(Variable("Boolean"))},
                     actions=[
                         Assignment(
-                            Name("Local"),
+                            Variable("Local"),
                             SubprogramCall(
-                                Name("Write"),
+                                Variable("Write"),
                                 [
-                                    Name("Channel1_Read_Write"),
-                                    SubprogramCall(Name("Read"), [Name("Channel2_Read")]),
+                                    Variable("Channel1_Read_Write"),
+                                    SubprogramCall(Variable("Read"), [Variable("Channel2_Read")]),
                                 ],
                             ),
                         ),
                         Assignment(
-                            Name("Local"),
-                            SubprogramCall(Name("Write"), [Name("Channel3_Write"), Name("Local")],),
+                            Variable("Local"),
+                            SubprogramCall(
+                                Variable("Write"), [Variable("Channel3_Write"), Variable("Local")],
+                            ),
                         ),
                     ],
                 ),

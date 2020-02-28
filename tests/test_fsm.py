@@ -5,10 +5,10 @@ from rflx.expression import (
     Argument,
     Equal,
     Greater,
-    Name,
     Number,
     Renames,
     Subprogram,
+    Variable,
     VariableDeclaration,
 )
 from rflx.fsm import FSM, State, StateMachine, StateName, Transition
@@ -299,7 +299,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[
                         Transition(
-                            target=StateName("INTERMEDIATE"), condition=Equal(Name("Error"), FALSE),
+                            target=StateName("INTERMEDIATE"),
+                            condition=Equal(Variable("Error"), FALSE),
                         ),
                         Transition(target=StateName("END")),
                     ],
@@ -310,7 +311,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Error": VariableDeclaration(Name("Boolean"))},
+            declarations={"Error": VariableDeclaration(Variable("Boolean"))},
         )
         self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
 
@@ -368,7 +369,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[
                         Transition(
                             target=StateName("INTERMEDIATE"),
-                            condition=Equal(Name("Error"), Name("Something")),
+                            condition=Equal(Variable("Error"), Variable("Something")),
                         ),
                         Transition(target=StateName("END")),
                     ],
@@ -380,8 +381,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={
-                "Error": VariableDeclaration(Name("Boolean")),
-                "Something": VariableDeclaration(Name("Boolean")),
+                "Error": VariableDeclaration(Variable("Boolean")),
+                "Something": VariableDeclaration(Variable("Boolean")),
             },
         )
         self.assertEqual(f.fsms[0], expected)
@@ -430,7 +431,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         Transition(
                             target=StateName("END"),
                             condition=Greater(
-                                SubprogramCall(Name("Foo"), [Number(100), Number(200)]),
+                                SubprogramCall(Variable("Foo"), [Number(100), Number(200)]),
                                 Number(1000),
                             ),
                         )
@@ -440,8 +441,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
             ],
             declarations={
                 "Foo": Subprogram(
-                    [Argument(Name("Bar"), Name("T1")), Argument(Name("Baz"), Name("P1.T1"))],
-                    Name("P2.T3"),
+                    [
+                        Argument(Variable("Bar"), Variable("T1")),
+                        Argument(Variable("Baz"), Variable("P1.T1")),
+                    ],
+                    Variable("P2.T3"),
                 )
             },
         )
@@ -475,14 +479,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[
                         Transition(
-                            target=StateName("END"), condition=Equal(Name("Local"), Name("Global"))
+                            target=StateName("END"),
+                            condition=Equal(Variable("Local"), Variable("Global")),
                         )
                     ],
-                    declarations={"Local": VariableDeclaration(Name("Boolean"))},
+                    declarations={"Local": VariableDeclaration(Variable("Boolean"))},
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
         self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
 
@@ -513,11 +518,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[Transition(target=StateName("END"))],
                     declarations={},
-                    actions=[Assignment(Name("Global"), FALSE)],
+                    actions=[Assignment(Variable("Global"), FALSE)],
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
         self.assertEqual(f.fsms[0], expected, msg=f"\n\n{f.fsms[0]}\n !=\n{expected}")
 
@@ -603,14 +608,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(
                     name=StateName("START"),
                     transitions=[
-                        Transition(target=StateName("END"), condition=Equal(Name("Foo"), FALSE))
+                        Transition(target=StateName("END"), condition=Equal(Variable("Foo"), FALSE))
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Foo": Renames(Name("Boolean"), Name("Bar")),
-                "Bar": VariableDeclaration(Name("Boolean")),
+                "Foo": Renames(Variable("Boolean"), Variable("Bar")),
+                "Bar": VariableDeclaration(Variable("Boolean")),
             },
         )
         self.assertEqual(f.fsms[0], expected)

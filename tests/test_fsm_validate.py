@@ -24,7 +24,6 @@ from rflx.fsm_expression import (
     ForAll,
     ForSome,
     MessageAggregate,
-    Name,
     NotContains,
     Opaque,
     String,
@@ -41,7 +40,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_aggregate(self) -> None:
         binding = Binding(
-            MessageAggregate(Variable("M1"), {"Data": Name("B1")}),
+            MessageAggregate(Variable("M1"), {"Data": Variable("B1")}),
             {"B1": MessageAggregate(Variable("M2"), {"Data": Variable("B2")})},
         )
         expected = MessageAggregate(
@@ -52,7 +51,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_forall_predicate(self) -> None:
         binding = Binding(
-            ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Name("Bar"))),
+            ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar"))),
             {"Bar": Variable("Baz")},
         )
         expected = ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Baz")))
@@ -61,7 +60,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_forall_iterable(self) -> None:
         binding = Binding(
-            ForAll(Variable("X"), Name("Y"), Equal(Variable("X"), Variable("Bar"))),
+            ForAll(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar"))),
             {"Y": Variable("Baz")},
         )
         expected = ForAll(Variable("X"), Variable("Baz"), Equal(Variable("X"), Variable("Bar")))
@@ -70,7 +69,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_forsome_predicate(self) -> None:
         binding = Binding(
-            ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Name("Bar"))),
+            ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar"))),
             {"Bar": Variable("Baz")},
         )
         expected = ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Baz")))
@@ -79,7 +78,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_forsome_iterable(self) -> None:
         binding = Binding(
-            ForSome(Variable("X"), Name("Y"), Equal(Variable("X"), Variable("Bar"))),
+            ForSome(Variable("X"), Variable("Y"), Equal(Variable("X"), Variable("Bar"))),
             {"Y": Variable("Baz")},
         )
         expected = ForSome(Variable("X"), Variable("Baz"), Equal(Variable("X"), Variable("Bar")))
@@ -87,32 +86,32 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, expected)
 
     def test_binding_contains_left(self) -> None:
-        binding = Binding(Contains(Name("X"), Variable("Y")), {"X": Variable("Baz")},)
+        binding = Binding(Contains(Variable("X"), Variable("Y")), {"X": Variable("Baz")},)
         expected = Contains(Variable("Baz"), Variable("Y"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_contains_right(self) -> None:
-        binding = Binding(Contains(Variable("X"), Name("Y")), {"Y": Variable("Baz")},)
+        binding = Binding(Contains(Variable("X"), Variable("Y")), {"Y": Variable("Baz")},)
         expected = Contains(Variable("X"), Variable("Baz"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_not_contains_left(self) -> None:
-        binding = Binding(NotContains(Name("X"), Name("Y")), {"X": Variable("Baz")},)
-        expected = NotContains(Variable("Baz"), Name("Y"))
+        binding = Binding(NotContains(Variable("X"), Variable("Y")), {"X": Variable("Baz")},)
+        expected = NotContains(Variable("Baz"), Variable("Y"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_not_contains_right(self) -> None:
-        binding = Binding(NotContains(Name("X"), Name("Y")), {"Y": Variable("Baz")},)
-        expected = NotContains(Name("X"), Variable("Baz"))
+        binding = Binding(NotContains(Variable("X"), Variable("Y")), {"Y": Variable("Baz")},)
+        expected = NotContains(Variable("X"), Variable("Baz"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_subprogram(self) -> None:
         binding = Binding(
-            SubprogramCall(Variable("Sub"), [Variable("A"), Name("B"), Variable("C")]),
+            SubprogramCall(Variable("Sub"), [Variable("A"), Variable("B"), Variable("C")]),
             {"B": Variable("Baz")},
         )
         expected = SubprogramCall(Variable("Sub"), [Variable("A"), Variable("Baz"), Variable("C")])
@@ -120,7 +119,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, expected)
 
     def test_binding_field(self) -> None:
-        binding = Binding(Field(Name("A"), "fld"), {"A": Variable("Baz")})
+        binding = Binding(Field(Variable("A"), "fld"), {"A": Variable("Baz")})
         expected = Field(Variable("Baz"), "fld")
         result = binding.simplified()
         self.assertEqual(result, expected)
@@ -129,7 +128,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         binding = Binding(
             Comprehension(
                 Variable("E"),
-                Name("List"),
+                Variable("List"),
                 Variable("E.Bar"),
                 Equal(Variable("E.Tag"), Variable("Foo")),
             ),
@@ -145,7 +144,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(result, expected)
 
     def test_binding_length(self) -> None:
-        binding = Binding(Length(Name("A")), {"A": Variable("Baz")})
+        binding = Binding(Length(Variable("A")), {"A": Variable("Baz")})
         expected = Length(Variable("Baz"))
         result = binding.simplified()
         self.assertEqual(result, expected)
@@ -156,7 +155,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_multiple_bindings(self) -> None:
         binding = Binding(
-            Field(Name("A"), "fld"), {"A": Binding(Name("B"), {"B": Variable("Baz")})}
+            Field(Variable("A"), "fld"), {"A": Binding(Variable("B"), {"B": Variable("Baz")})}
         )
         expected = Field(Variable("Baz"), "fld")
         result = binding.simplified()
@@ -164,29 +163,29 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_binding_multiple_variables(self) -> None:
         binding = Binding(
-            SubprogramCall(Variable("Sub"), [Name("A"), Name("A")]), {"A": Variable("Baz")}
+            SubprogramCall(Variable("Sub"), [Variable("A"), Variable("A")]), {"A": Variable("Baz")}
         )
         expected = SubprogramCall(Variable("Sub"), [Variable("Baz"), Variable("Baz")])
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_conversion(self) -> None:
-        binding = Binding(Conversion(Name("Type"), Name("A")), {"A": Variable("Baz")})
+        binding = Binding(Conversion(Variable("Type"), Variable("A")), {"A": Variable("Baz")})
         expected = Conversion(Variable("Type"), Variable("Baz"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_conversion_name_unchanged(self) -> None:
-        binding = Binding(Conversion(Name("Type"), Name("A")), {"Type": Variable("Baz")})
+        binding = Binding(Conversion(Variable("Type"), Variable("A")), {"Type": Variable("Baz")})
         expected = Conversion(Variable("Type"), Variable("A"))
         result = binding.simplified()
         self.assertEqual(result, expected)
 
     def test_binding_opaque(self) -> None:
         binding = Binding(
-            Opaque(SubprogramCall(Name("Sub"), [Name("Bound")])), {"Bound": Name("Foo")}
+            Opaque(SubprogramCall(Variable("Sub"), [Variable("Bound")])), {"Bound": Variable("Foo")}
         )
-        expected = Opaque(SubprogramCall(Name("Sub"), [Name("Foo")]))
+        expected = Opaque(SubprogramCall(Variable("Sub"), [Variable("Foo")]))
         result = binding.simplified()
         self.assertEqual(result, expected, msg=f"\n\n{repr(expected)}\n !=\n{repr(result)}")
 
@@ -203,7 +202,8 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[
                             Transition(
-                                target=StateName("END"), condition=Equal(Name("Undefined"), TRUE)
+                                target=StateName("END"),
+                                condition=Equal(Variable("Undefined"), TRUE),
                             )
                         ],
                     ),
@@ -221,12 +221,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(
                     name=StateName("START"),
                     transitions=[
-                        Transition(target=StateName("END"), condition=Equal(Name("Defined"), TRUE))
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Defined"), TRUE)
+                        )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Defined": VariableDeclaration(Name("Some_Type"))},
+            declarations={"Defined": VariableDeclaration(Variable("Some_Type"))},
         )
 
     def test_declared_local_variable(self) -> None:  # pylint: disable=no-self-use
@@ -239,14 +241,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[
                         Transition(
-                            target=StateName("END"), condition=Equal(Name("Local"), Name("Global"))
+                            target=StateName("END"),
+                            condition=Equal(Variable("Local"), Variable("Global")),
                         )
                     ],
-                    declarations={"Local": VariableDeclaration(Name("Some_Type"))},
+                    declarations={"Local": VariableDeclaration(Variable("Some_Type"))},
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Global": VariableDeclaration(Name("Some_Type"))},
+            declarations={"Global": VariableDeclaration(Variable("Some_Type"))},
         )
 
     def test_undeclared_local_variable(self) -> None:
@@ -261,21 +264,21 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("STATE"))],
-                        declarations={"Start_Local": VariableDeclaration(Name("Some_Type"))},
+                        declarations={"Start_Local": VariableDeclaration(Variable("Some_Type"))},
                     ),
                     State(
                         name=StateName("STATE"),
                         transitions=[
                             Transition(
                                 target=StateName("END"),
-                                condition=Equal(Name("Start_Local"), Name("Global")),
+                                condition=Equal(Variable("Start_Local"), Variable("Global")),
                             )
                         ],
-                        declarations={"Local": VariableDeclaration(Name("Some_Type"))},
+                        declarations={"Local": VariableDeclaration(Variable("Some_Type"))},
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Global": VariableDeclaration(Name("Some_Type"))},
+                declarations={"Global": VariableDeclaration(Variable("Some_Type"))},
             )
 
     def test_declared_local_variable_valid(self) -> None:  # pylint: disable=no-self-use
@@ -288,14 +291,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     name=StateName("START"),
                     transitions=[
                         Transition(
-                            target=StateName("END"), condition=Equal(Valid(Name("Global")), TRUE)
+                            target=StateName("END"),
+                            condition=Equal(Valid(Variable("Global")), TRUE),
                         )
                     ],
                     declarations={},
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
 
     def test_declared_local_variable_field(self) -> None:  # pylint: disable=no-self-use
@@ -309,14 +313,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[
                         Transition(
                             target=StateName("END"),
-                            condition=Equal(Field(Name("Global"), "fld"), TRUE),
+                            condition=Equal(Field(Variable("Global"), "fld"), TRUE),
                         )
                     ],
                     declarations={},
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Global": VariableDeclaration(Name("Boolean"))},
+            declarations={"Global": VariableDeclaration(Variable("Boolean"))},
         )
 
     def test_assignment_to_undeclared_variable(self) -> None:
@@ -332,7 +336,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
                         declarations={},
-                        actions=[Assignment(Name("Undefined"), FALSE)],
+                        actions=[Assignment(Variable("Undefined"), FALSE)],
                     ),
                     State(name=StateName("END")),
                 ],
@@ -352,11 +356,11 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
                         declarations={},
-                        actions=[Assignment(Name("Global"), Name("Undefined"))],
+                        actions=[Assignment(Variable("Global"), Variable("Undefined"))],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Global": VariableDeclaration(Name("Boolean"))},
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_erasure_of_undeclared_variable(self) -> None:
@@ -372,7 +376,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
                         declarations={},
-                        actions=[Erase(Name("Undefined"))],
+                        actions=[Erase(Variable("Undefined"))],
                     ),
                     State(name=StateName("END")),
                 ],
@@ -392,7 +396,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
                         declarations={},
-                        actions=[Reset(Name("Undefined"))],
+                        actions=[Reset(Variable("Undefined"))],
                     ),
                     State(name=StateName("END")),
                 ],
@@ -415,13 +419,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Global"), SubprogramCall(Name("UndefSub"), [Name("Global")])
+                                Variable("Global"),
+                                SubprogramCall(Variable("UndefSub"), [Variable("Global")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Global": VariableDeclaration(Name("Boolean"))},
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_call_to_builtin_read(self) -> None:  # pylint: disable=no-self-use
@@ -433,19 +438,22 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(
                     name=StateName("START"),
                     transitions=[
-                        Transition(target=StateName("END"), condition=Equal(Name("Global"), TRUE))
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Global"), TRUE)
+                        )
                     ],
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("Global"), SubprogramCall(Name("Read"), [Name("Some_Channel")])
+                            Variable("Global"),
+                            SubprogramCall(Variable("Read"), [Variable("Some_Channel")]),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Global": VariableDeclaration(Name("Boolean")),
+                "Global": VariableDeclaration(Variable("Boolean")),
                 "Some_Channel": Channel(read=True, write=False),
             },
         )
@@ -459,20 +467,22 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(
                     name=StateName("START"),
                     transitions=[
-                        Transition(target=StateName("END"), condition=Equal(Name("Success"), TRUE))
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Success"), TRUE)
+                        )
                     ],
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("Success"),
-                            SubprogramCall(Name("Write"), [Name("Some_Channel"), TRUE]),
+                            Variable("Success"),
+                            SubprogramCall(Variable("Write"), [Variable("Some_Channel"), TRUE]),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Success": VariableDeclaration(Name("Boolean")),
+                "Success": VariableDeclaration(Variable("Boolean")),
                 "Some_Channel": Channel(read=False, write=True),
             },
         )
@@ -489,15 +499,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("Result"),
-                            SubprogramCall(Name("Call"), [Name("Some_Channel"), TRUE]),
+                            Variable("Result"),
+                            SubprogramCall(Variable("Call"), [Variable("Some_Channel"), TRUE]),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Result": VariableDeclaration(Name("Boolean")),
+                "Result": VariableDeclaration(Variable("Boolean")),
                 "Some_Channel": Channel(read=True, write=True),
             },
         )
@@ -514,15 +524,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("Result"),
-                            SubprogramCall(Name("Data_Available"), [Name("Some_Channel")]),
+                            Variable("Result"),
+                            SubprogramCall(Variable("Data_Available"), [Variable("Some_Channel")]),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Result": VariableDeclaration(Name("Boolean")),
+                "Result": VariableDeclaration(Variable("Boolean")),
                 "Some_Channel": Channel(read=True, write=True),
             },
         )
@@ -541,11 +551,13 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
                         declarations={},
-                        actions=[Assignment(Name("Result"), SubprogramCall(Name("Read"), []))],
+                        actions=[
+                            Assignment(Variable("Result"), SubprogramCall(Variable("Read"), []))
+                        ],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+                declarations={"Result": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_call_to_builtin_read_undeclared_channel(self) -> None:
@@ -564,13 +576,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Read"), [Name("Undeclared")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Read"), [Variable("Undeclared")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+                declarations={"Result": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_call_to_builtin_read_invalid_channel_type(self) -> None:
@@ -589,13 +602,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Read"), [Name("Result")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Read"), [Variable("Result")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Result": VariableDeclaration(Name("Boolean"))},
+                declarations={"Result": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_call_to_builtin_write_invalid_channel_mode(self) -> None:
@@ -615,14 +629,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Write"), [Name("Out_Channel")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Write"), [Variable("Out_Channel")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
                     "Out_Channel": Channel(read=True, write=False),
                 },
             )
@@ -644,15 +659,17 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"),
-                                SubprogramCall(Name("Data_Available"), [Name("Out_Channel")]),
+                                Variable("Result"),
+                                SubprogramCall(
+                                    Variable("Data_Available"), [Variable("Out_Channel")]
+                                ),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
                     "Out_Channel": Channel(read=False, write=True),
                 },
             )
@@ -674,14 +691,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Read"), [Name("Channel")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Read"), [Variable("Channel")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
                     "Channel": Channel(read=False, write=True),
                 },
             )
@@ -703,14 +721,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Call"), [Name("Channel")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Call"), [Variable("Channel")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
                     "Channel": Channel(read=False, write=True),
                 },
             )
@@ -732,14 +751,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("Call"), [Name("Channel")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("Call"), [Variable("Channel")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
                     "Channel": Channel(read=True, write=False),
                 },
             )
@@ -753,16 +773,20 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(
                     name=StateName("START"),
                     transitions=[
-                        Transition(target=StateName("END"), condition=Equal(Name("Result"), TRUE))
+                        Transition(
+                            target=StateName("END"), condition=Equal(Variable("Result"), TRUE)
+                        )
                     ],
                     declarations={},
-                    actions=[Assignment(Name("Result"), SubprogramCall(Name("SubProg"), []))],
+                    actions=[
+                        Assignment(Variable("Result"), SubprogramCall(Variable("SubProg"), []))
+                    ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "Result": VariableDeclaration(Name("Boolean")),
-                "SubProg": Subprogram([], Name("Boolean")),
+                "Result": VariableDeclaration(Variable("Boolean")),
+                "SubProg": Subprogram([], Variable("Boolean")),
             },
         )
 
@@ -783,15 +807,16 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Result"), SubprogramCall(Name("SubProg"), [Name("Undefined")])
+                                Variable("Result"),
+                                SubprogramCall(Variable("SubProg"), [Variable("Undefined")]),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Result": VariableDeclaration(Name("Boolean")),
-                    "SubProg": Subprogram([], Name("Boolean")),
+                    "Result": VariableDeclaration(Variable("Boolean")),
+                    "SubProg": Subprogram([], Variable("Boolean")),
                 },
             )
 
@@ -811,7 +836,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Read": Subprogram([], Name("Boolean"))},
+                declarations={"Read": Subprogram([], Variable("Boolean"))},
             )
 
     def test_function_declaration_is_no_builtin_write(self) -> None:
@@ -849,7 +874,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Call": VariableDeclaration(Name("Boolean"))},
+                declarations={"Call": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_function_declaration_is_no_builtin_data_available(self) -> None:
@@ -868,7 +893,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Data_Available": Renames(Name("Boolean"), Name("Foo.Bar"))},
+                declarations={"Data_Available": Renames(Variable("Boolean"), Variable("Foo.Bar"))},
             )
 
     def test_local_variable_shadows_global(self) -> None:
@@ -884,14 +909,14 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         name=StateName("START"),
                         transitions=[
                             Transition(
-                                target=StateName("END"), condition=Equal(Name("Global"), TRUE)
+                                target=StateName("END"), condition=Equal(Variable("Global"), TRUE)
                             )
                         ],
-                        declarations={"Global": VariableDeclaration(Name("Boolean"))},
+                        declarations={"Global": VariableDeclaration(Variable("Boolean"))},
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Global": VariableDeclaration(Name("Boolean"))},
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_unused_global_variable(self) -> None:
@@ -908,7 +933,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Global": VariableDeclaration(Name("Boolean"))},
+                declarations={"Global": VariableDeclaration(Variable("Boolean"))},
             )
 
     def test_unused_local_variable(self) -> None:
@@ -921,7 +946,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(
                         name=StateName("START"),
                         transitions=[Transition(target=StateName("END"))],
-                        declarations={"Data": VariableDeclaration(Name("Boolean"))},
+                        declarations={"Data": VariableDeclaration(Variable("Boolean"))},
                     ),
                     State(name=StateName("END")),
                 ],
@@ -938,13 +963,15 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(
                         name=StateName("START"),
                         transitions=[
-                            Transition(target=StateName("END"), condition=Equal(Name("Ren"), TRUE))
+                            Transition(
+                                target=StateName("END"), condition=Equal(Variable("Ren"), TRUE)
+                            )
                         ],
                         declarations={},
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Ren": Renames(Name("Boolean"), Name("Foo"))},
+                declarations={"Ren": Renames(Variable("Boolean"), Variable("Foo"))},
             )
 
     def test_binding_as_subprogram_parameter(self) -> None:  # pylint: disable=no-self-use
@@ -959,10 +986,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("Result"),
+                            Variable("Result"),
                             Binding(
-                                SubprogramCall(Name("SubProg"), [Length(Name("Bound"))]),
-                                {"Bound": Name("Variable")},
+                                SubprogramCall(Variable("SubProg"), [Length(Variable("Bound"))]),
+                                {"Bound": Variable("Variable")},
                             ),
                         )
                     ],
@@ -970,9 +997,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={
-                "Result": VariableDeclaration(Name("Boolean")),
-                "Variable": VariableDeclaration(Name("Boolean")),
-                "SubProg": Subprogram([], Name("Boolean")),
+                "Result": VariableDeclaration(Variable("Boolean")),
+                "Variable": VariableDeclaration(Variable("Boolean")),
+                "SubProg": Subprogram([], Variable("Boolean")),
             },
         )
 
@@ -988,14 +1015,16 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         Transition(
                             target=StateName("END"),
                             condition=ForAll(
-                                Name("E"), Name("List"), Equal(Field(Name("E"), "Tag"), Number(42))
+                                Variable("E"),
+                                Variable("List"),
+                                Equal(Field(Variable("E"), "Tag"), Number(42)),
                             ),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"List": VariableDeclaration(Name("Foo"))},
+            declarations={"List": VariableDeclaration(Variable("Foo"))},
         )
 
     def test_append_list_attribute(self) -> None:  # pylint: disable=no-self-use
@@ -1010,16 +1039,18 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("List"),
-                            SubprogramCall(Name("Append"), [Name("List"), Name("Element")]),
+                            Variable("List"),
+                            SubprogramCall(
+                                Variable("Append"), [Variable("List"), Variable("Element")]
+                            ),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "List": VariableDeclaration(Name("List_Type")),
-                "Element": VariableDeclaration(Name("Element_Type")),
+                "List": VariableDeclaration(Variable("List_Type")),
+                "Element": VariableDeclaration(Variable("Element_Type")),
             },
         )
 
@@ -1035,16 +1066,18 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     declarations={},
                     actions=[
                         Assignment(
-                            Name("List"),
-                            SubprogramCall(Name("Extend"), [Name("List"), Name("Element")]),
+                            Variable("List"),
+                            SubprogramCall(
+                                Variable("Extend"), [Variable("List"), Variable("Element")]
+                            ),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
             declarations={
-                "List": VariableDeclaration(Name("List_Type")),
-                "Element": VariableDeclaration(Name("Element_Type")),
+                "List": VariableDeclaration(Variable("List_Type")),
+                "Element": VariableDeclaration(Variable("Element_Type")),
             },
         )
 
@@ -1063,16 +1096,17 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         declarations={},
                         actions=[
                             Assignment(
-                                Name("Data"),
+                                Variable("Data"),
                                 MessageAggregate(
-                                    Name("Data_Type"), {"Foo": Name("Data"), "Bar": Name("Undef")}
+                                    Variable("Data_Type"),
+                                    {"Foo": Variable("Data"), "Bar": Variable("Undef")},
                                 ),
                             )
                         ],
                     ),
                     State(name=StateName("END")),
                 ],
-                declarations={"Data": VariableDeclaration(Name("Data_Type"))},
+                declarations={"Data": VariableDeclaration(Variable("Data_Type"))},
             )
 
     def test_comprehension(self) -> None:  # pylint: disable=no-self-use
@@ -1086,19 +1120,19 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[Transition(target=StateName("END"))],
                     actions=[
                         Assignment(
-                            Name("Input"),
+                            Variable("Input"),
                             Comprehension(
-                                Name("K"),
-                                Name("Input"),
-                                Field(Name("K"), "Data"),
-                                Equal(Field(Name("K"), "Valid"), TRUE),
+                                Variable("K"),
+                                Variable("Input"),
+                                Field(Variable("K"), "Data"),
+                                Equal(Field(Variable("K"), "Valid"), TRUE),
                             ),
                         )
                     ],
                 ),
                 State(name=StateName("END")),
             ],
-            declarations={"Input": VariableDeclaration(Name("Foo"))},
+            declarations={"Input": VariableDeclaration(Variable("Foo"))},
         )
 
     def test_assignment_opaque_subprogram_undef_parameter(self,) -> None:
@@ -1117,7 +1151,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                         transitions=[Transition(target=StateName("END"))],
                         actions=[
                             Assignment(
-                                Name("Data"),
+                                Variable("Data"),
                                 Opaque(SubprogramCall(Variable("Sub"), [Variable("UndefData")]),),
                             )
                         ],
@@ -1125,9 +1159,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     State(name=StateName("END")),
                 ],
                 declarations={
-                    "Data": VariableDeclaration(Name("Foo")),
+                    "Data": VariableDeclaration(Variable("Foo")),
                     "Sub": Subprogram(
-                        [Argument(Name("Param"), Name("Param_Type"))], Name("Result_Type")
+                        [Argument(Variable("Param"), Variable("Param_Type"))],
+                        Variable("Result_Type"),
                     ),
                 },
             )
@@ -1143,7 +1178,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[Transition(target=StateName("END"))],
                     actions=[
                         Assignment(
-                            Name("Data"),
+                            Variable("Data"),
                             Opaque(SubprogramCall(Variable("Sub"), [Variable("Data")]),),
                         )
                     ],
@@ -1151,9 +1186,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={
-                "Data": VariableDeclaration(Name("Foo")),
+                "Data": VariableDeclaration(Variable("Foo")),
                 "Sub": Subprogram(
-                    [Argument(Name("Param"), Name("Param_Type"))], Name("Result_Type")
+                    [Argument(Variable("Param"), Variable("Param_Type"))], Variable("Result_Type")
                 ),
             },
         )
@@ -1169,10 +1204,10 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     transitions=[Transition(target=StateName("END"))],
                     actions=[
                         Assignment(
-                            Name("Data"),
+                            Variable("Data"),
                             Binding(
-                                Opaque(SubprogramCall(Name("Sub"), [Name("Bound")])),
-                                {"Bound": Name("Data")},
+                                Opaque(SubprogramCall(Variable("Sub"), [Variable("Bound")])),
+                                {"Bound": Variable("Data")},
                             ),
                         )
                     ],
@@ -1180,9 +1215,9 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 State(name=StateName("END")),
             ],
             declarations={
-                "Data": VariableDeclaration(Name("Foo")),
+                "Data": VariableDeclaration(Variable("Foo")),
                 "Sub": Subprogram(
-                    [Argument(Name("Param"), Name("Param_Type"))], Name("Result_Type")
+                    [Argument(Variable("Param"), Variable("Param_Type"))], Variable("Result_Type")
                 ),
             },
         )

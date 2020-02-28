@@ -12,6 +12,7 @@ from rflx.expression import (
     Precedence,
     Relation,
     ValidationError,
+    Variable,
     VariableDeclaration,
 )
 
@@ -29,14 +30,14 @@ class Head(Attribute):
 
 
 class Opaque(Attribute):
-    def simplified(self, facts: Mapping["Name", Expr] = None) -> Expr:
+    def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
         if isinstance(self.name, Expr):
             return Opaque(self.name.simplified(facts))
         return self
 
 
 class Quantifier(Expr):
-    def __init__(self, quantifier: Name, iteratable: Expr, predicate: Expr) -> None:
+    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
         self.__iterable = iteratable
         self.__predicate = predicate
@@ -129,7 +130,7 @@ class NotContains(Relation):
 
 
 class SubprogramCall(Expr):
-    def __init__(self, name: Name, arguments: List[Expr]) -> None:
+    def __init__(self, name: Variable, arguments: List[Expr]) -> None:
         self.__name = name
         self.__arguments = arguments
 
@@ -167,7 +168,7 @@ class SubprogramCall(Expr):
         args = self.__arguments
         if len(args) < 1:
             raise ValidationError(f"no channel argument in call to {self.__name}")
-        if not isinstance(args[0], Name) or not isinstance(args[0].name, str):
+        if not isinstance(args[0], Variable) or not isinstance(args[0].name, str):
             raise ValidationError(f"invalid channel type in call to {self.__name}")
         if args[0].name not in declarations:
             raise ValidationError(f"undeclared channel in call to {self.__name}")
@@ -195,7 +196,7 @@ class SubprogramCall(Expr):
 
 
 class Conversion(Expr):
-    def __init__(self, name: Name, argument: Expr) -> None:
+    def __init__(self, name: Variable, argument: Expr) -> None:
         self.__name = name
         self.__argument = argument
 
@@ -245,7 +246,7 @@ class Field(Expr):
 
 
 class Comprehension(Expr):
-    def __init__(self, iterator: Name, array: Expr, selector: Expr, condition: Expr) -> None:
+    def __init__(self, iterator: Variable, array: Expr, selector: Expr, condition: Expr) -> None:
         self.__iterator = iterator
         self.__array = array
         self.__selector = selector
@@ -285,7 +286,7 @@ class Comprehension(Expr):
 
 
 class MessageAggregate(Expr):
-    def __init__(self, name: Name, data: Dict[str, Expr]) -> None:
+    def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
         self.__name = name
         self.__data = data
 
@@ -326,7 +327,9 @@ class Binding(Expr):
         raise NotImplementedError
 
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
-        simplified_data = {Name(k): self.__data[k].simplified() for k in self.__data}
+        simplified_data: Dict[Name, Expr] = {
+            Variable(k): self.__data[k].simplified() for k in self.__data
+        }
         if facts:
             simplified_data.update(facts)
         return self.__expr.simplified(simplified_data)
