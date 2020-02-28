@@ -17,19 +17,26 @@ from rflx.expression import (
 )
 
 
-class Valid(Attribute):
+class FSMAttribute(Attribute):
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        if not isinstance(self.name, str):
+            return self.name.variables(proof)
+        return []
+
+
+class Valid(FSMAttribute):
     pass
 
 
-class Present(Attribute):
+class Present(FSMAttribute):
     pass
 
 
-class Head(Attribute):
+class Head(FSMAttribute):
     pass
 
 
-class Opaque(Attribute):
+class Opaque(FSMAttribute):
     def simplified(self, facts: Mapping[Name, Expr] = None) -> Expr:
         if isinstance(self.name, Expr):
             return Opaque(self.name.simplified(facts))
@@ -37,9 +44,9 @@ class Opaque(Attribute):
 
 
 class Quantifier(Expr):
-    def __init__(self, quantifier: Variable, iteratable: Expr, predicate: Expr) -> None:
+    def __init__(self, quantifier: Variable, iterable: Expr, predicate: Expr) -> None:
         self.__quantifier = quantifier
-        self.__iterable = iteratable
+        self.__iterable = iterable
         self.__predicate = predicate
         self.symbol: str = ""
 
@@ -67,6 +74,13 @@ class Quantifier(Expr):
         } if isinstance(self.__quantifier.name, str) else {}
         self.__iterable.validate({**declarations, **quantifier})
         self.__predicate.validate({**declarations, **quantifier})
+
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        return [
+            v
+            for v in self.__predicate.variables(proof) + self.__iterable.variables()
+            if v != self.__quantifier
+        ]
 
 
 class ForSome(Quantifier):
@@ -194,6 +208,12 @@ class SubprogramCall(Expr):
             except ValidationError as e:
                 raise ValidationError(f"{e} (parameter {index}) in call to {self.__name}")
 
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        result = []
+        for t in self.__arguments:
+            result.extend(t.variables(proof))
+        return result
+
 
 class Conversion(Expr):
     def __init__(self, name: Variable, argument: Expr) -> None:
@@ -219,6 +239,9 @@ class Conversion(Expr):
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
         self.__argument.validate(declarations)
 
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        return self.__argument.variables(proof)
+
 
 class Field(Expr):
     def __init__(self, expression: Expr, field: str) -> None:
@@ -243,6 +266,9 @@ class Field(Expr):
 
     def validate(self, declarations: Mapping[str, Declaration]) -> None:
         self.__expression.validate(declarations)
+
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        return self.__expression.variables(proof)
 
 
 class Comprehension(Expr):
@@ -284,6 +310,15 @@ class Comprehension(Expr):
         self.__selector.validate({**declarations, **quantifier})
         self.__condition.validate({**declarations, **quantifier})
 
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        return [
+            v
+            for v in self.__array.variables(proof)
+            + self.__selector.variables()
+            + self.__condition.variables()
+            if v != self.__iterator
+        ]
+
 
 class MessageAggregate(Expr):
     def __init__(self, name: Variable, data: Dict[str, Expr]) -> None:
@@ -313,6 +348,12 @@ class MessageAggregate(Expr):
         for k in self.__data:
             self.__data[k].validate(declarations)
 
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        result = []
+        for _, v in self.__data.items():
+            result.extend(v.variables(proof))
+        return result
+
 
 class Binding(Expr):
     def __init__(self, expr: Expr, data: Dict[str, Expr]) -> None:
@@ -340,6 +381,9 @@ class Binding(Expr):
 
     def z3expr(self) -> z3.ExprRef:
         raise NotImplementedError
+
+    def variables(self, proof: bool = False) -> List["Variable"]:
+        return self.simplified().variables(proof)
 
 
 class String(Expr):

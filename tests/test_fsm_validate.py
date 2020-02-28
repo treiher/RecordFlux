@@ -4,10 +4,12 @@ import unittest
 from rflx.expression import (
     FALSE,
     TRUE,
+    And,
     Argument,
     Channel,
     Equal,
     Length,
+    Less,
     Number,
     Renames,
     Subprogram,
@@ -23,9 +25,12 @@ from rflx.fsm_expression import (
     Field,
     ForAll,
     ForSome,
+    Head,
     MessageAggregate,
     NotContains,
     Opaque,
+    Present,
+    Quantifier,
     String,
     SubprogramCall,
     Valid,
@@ -187,7 +192,7 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
         )
         expected = Opaque(SubprogramCall(Variable("Sub"), [Variable("Foo")]))
         result = binding.simplified()
-        self.assertEqual(result, expected, msg=f"\n\n{repr(expected)}\n !=\n{repr(result)}")
+        self.assertEqual(result, expected)
 
     def test_undeclared_variable(self) -> None:
         with self.assertRaisesRegex(
@@ -1221,3 +1226,88 @@ class TestFSM(unittest.TestCase):  # pylint: disable=too-many-public-methods
                 ),
             },
         )
+
+    def test_extract_variables_simple(self) -> None:
+        result = Variable("Foo").variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_and(self) -> None:
+        result = And(Variable("Foo"), Variable("Bar")).variables()
+        expected = [Variable("Foo"), Variable("Bar")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_field(self) -> None:
+        result = Field(Variable("Foo"), "Bar").variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_valid(self) -> None:
+        result = Valid(Variable("Foo")).variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_present(self) -> None:
+        result = Present(Variable("Foo")).variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_head(self) -> None:
+        result = Head(Variable("Foo")).variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_opaque(self) -> None:
+        result = Opaque(Variable("Foo")).variables()
+        expected = [Variable("Foo")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_quantifier(self) -> None:
+        result = Quantifier(
+            Variable("Q"), Variable("List"), Equal(Field(Variable("Q"), "Fld"), Variable("X"))
+        ).variables()
+        expected = [Variable("X"), Variable("List")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_contains(self) -> None:
+        result = Contains(Variable("A"), Variable("B")).variables()
+        expected = [Variable("A"), Variable("B")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_subprogramcall(self) -> None:
+        result = SubprogramCall(Variable("Sub"), [Variable("A"), Variable("B")]).variables()
+        expected = [Variable("A"), Variable("B")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_conversion(self) -> None:
+        result = Conversion(Variable("Sub"), Variable("X")).variables()
+        expected = [Variable("X")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_comprehension(self) -> None:
+        result = Comprehension(
+            Variable("I"),
+            Variable("List"),
+            Field(Variable("I"), "Data"),
+            Less(Field(Variable("I"), "X"), Variable("Z")),
+        ).variables()
+        expected = [Variable("List"), Variable("Z")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_message_aggregate(self) -> None:
+        result = MessageAggregate(
+            Variable("Aggr"), {"Foo": Variable("A"), "Bar": Variable("B"), "Baz": Variable("C")}
+        ).variables()
+        expected = [Variable("A"), Variable("B"), Variable("C")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_binding(self) -> None:
+        result = Binding(
+            Less(Variable("A"), Variable("Bound")), {"Bound": Less(Variable("B"), Variable("C"))}
+        ).variables()
+        expected = [Variable("A"), Variable("B"), Variable("C")]
+        self.assertEqual(result, expected)
+
+    def test_extract_variables_string(self) -> None:
+        result = String("Foo").variables()
+        self.assertEqual(result, [])
