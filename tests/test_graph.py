@@ -32,7 +32,7 @@ class TestGraph(unittest.TestCase):
         expected = """
             digraph "P.M" {
                 graph [ranksep="0.8 equally", splines=ortho];
-                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code"];
+                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code", penwidth="2.5"];
                 node [color="#6f6f6f", fillcolor="#009641", fontcolor="#ffffff", fontname=Arimo,
                       shape=box, style="rounded,filled", width="1.5"];
                 Initial [fillcolor="#ffffff", label="", shape=circle, width="0.5"];
@@ -55,7 +55,7 @@ class TestGraph(unittest.TestCase):
         expected = """
             digraph "P.M" {
                 graph [ranksep="0.8 equally", splines=ortho];
-                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code"];
+                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code", penwidth="2.5"];
                 node [color="#6f6f6f", fillcolor="#009641", fontcolor="#ffffff", fontname=Arimo,
                       shape=box, style="rounded,filled", width="1.5"];
                 Initial [fillcolor="#ffffff", label="", shape=circle, width="0.5"];
@@ -83,7 +83,7 @@ class TestGraph(unittest.TestCase):
         expected = """
             digraph "P.M" {
                 graph [ranksep="0.8 equally", splines=ortho];
-                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code"];
+                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code", penwidth="2.5"];
                 node [color="#6f6f6f", fillcolor="#009641", fontcolor="#ffffff", fontname=Arimo,
                       shape=box, style="rounded,filled", width="1.5"];
                 Initial [fillcolor="#ffffff", label="", shape=circle, width="0.5"];
@@ -112,7 +112,7 @@ class TestGraph(unittest.TestCase):
         expected = """
             digraph "P.M" {
                 graph [ranksep="0.8 equally", splines=ortho];
-                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code"];
+                edge [color="#6f6f6f", fontcolor="#6f6f6f", fontname="Fira Code", penwidth="2.5"];
                 node [color="#6f6f6f", fillcolor="#009641", fontcolor="#ffffff", fontname=Arimo,
                       shape=box, style="rounded,filled", width="1.5"];
                 Initial [fillcolor="#ffffff", label="", shape=circle, width="0.5"];
