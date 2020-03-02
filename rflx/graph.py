@@ -1,5 +1,7 @@
+import collections
 from copy import copy
-from typing import BinaryIO, Set, Union
+from math import sqrt
+from typing import BinaryIO, Counter, Union
 
 from pydotplus import Dot, Edge, Node
 
@@ -12,6 +14,13 @@ from rflx.statement import Assignment
 class Graph:
     def __init__(self, data: Union[StateMachine, Message]) -> None:
         self.__data = copy(data)
+        if isinstance(self.__data, StateMachine):
+            self.__degree = {s.name.name: len(s.transitions) for s in self.__data.states}
+            for s in self.__data.states:
+                for p in self.__data.states:
+                    for t in p.transitions:
+                        if t.target == s.name:
+                            self.__degree[s.name.name] += 1
 
     def __target_size(self, link: Link) -> str:
         if not isinstance(self.__data, Message):
@@ -55,19 +64,34 @@ class Graph:
         )
         return result
 
-    def __add_state(self, state: State, result: Dot, variables: Set[str]) -> None:
+    def __add_state(self, state: State, result: Dot, variables: Counter[str]) -> None:
 
         if not isinstance(self.__data, StateMachine):
             raise TypeError(f"Invalid data format {type(self.__data).__name__}")
 
-        variables_read: Set[str] = set()
-        variables_write: Set[str] = set()
+        height = sqrt(self.__degree[state.name.name] + 1)
+        width = 1.3 * sqrt(self.__degree[state.name.name] + 1)
+
+        variables_read: Counter[str] = collections.Counter()
+        variables_write: Counter[str] = collections.Counter()
         if state.name == self.__data.initial:
-            result.add_node(Node(name=state.name.name, fillcolor="#ffffff", fontcolor="black"))
+            result.add_node(
+                Node(
+                    name=state.name.name,
+                    fillcolor="#ffffff",
+                    fontcolor="black",
+                    width=str(width),
+                    height=str(height),
+                )
+            )
         elif state.name == self.__data.final:
-            result.add_node(Node(name=state.name.name, fillcolor="#6f6f6f"))
+            result.add_node(
+                Node(
+                    name=state.name.name, fillcolor="#6f6f6f", width=str(width), height=str(height)
+                )
+            )
         else:
-            result.add_node(Node(name=state.name.name))
+            result.add_node(Node(name=state.name.name, width=str(width), height=str(height)))
 
         if not isinstance(state.name.name, str):
             raise TypeError
@@ -118,13 +142,15 @@ class Graph:
         if not isinstance(self.__data, StateMachine):
             raise TypeError(f"Invalid data format {type(self.__data).__name__}")
 
-        variables: Set[str] = set()
+        variables: Counter[str] = collections.Counter()
         result = self.__graph_with_defaults("StateMachine")
         for s in self.__data.states:
             self.__add_state(s, result, variables)
 
-        for v in variables:
-            result.add_node(Node(name=v, fillcolor="#7e8ab8"))
+        for v, d in variables.items():
+            height = sqrt(d + 1)
+            width = 1.3 * height
+            result.add_node(Node(name=v, fillcolor="#7e8ab8", width=str(width), height=str(height)))
 
         return result
 

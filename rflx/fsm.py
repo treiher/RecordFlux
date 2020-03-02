@@ -1,5 +1,5 @@
 # pylint: disable=fixme
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import yaml
 from pyparsing import ParseFatalException
@@ -50,8 +50,8 @@ class State(Element):
     def __init__(
         self,
         name: StateName,
-        transitions: Optional[Iterable[Transition]] = None,
-        actions: Optional[Iterable[Statement]] = None,
+        transitions: Optional[Sequence[Transition]] = None,
+        actions: Optional[Sequence[Statement]] = None,
         declarations: Optional[Dict[str, Declaration]] = None,
     ):
         self.__name = name
@@ -64,7 +64,7 @@ class State(Element):
         return self.__name
 
     @property
-    def transitions(self) -> Iterable[Transition]:
+    def transitions(self) -> Sequence[Transition]:
         return self.__transitions or []
 
     @property
@@ -72,7 +72,7 @@ class State(Element):
         return self.__declarations
 
     @property
-    def actions(self) -> Iterable[Statement]:
+    def actions(self) -> Sequence[Statement]:
         return self.__actions
 
 
@@ -82,7 +82,7 @@ class StateMachine(Element):
         name: str,
         initial: StateName,
         final: StateName,
-        states: Iterable[State],
+        states: Sequence[State],
         declarations: Dict[str, Declaration],
     ):  # pylint: disable=too-many-arguments
         self.__name = name
@@ -227,7 +227,7 @@ class StateMachine(Element):
         return self.__final
 
     @property
-    def states(self) -> Iterable[State]:
+    def states(self) -> Sequence[State]:
         return self.__states
 
 
