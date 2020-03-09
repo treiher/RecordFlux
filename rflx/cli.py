@@ -39,6 +39,9 @@ def main(argv: List[str]) -> Union[int, str]:
         "-d", "--directory", help="output directory", default=".", type=str
     )
     parser_generate.add_argument(
+        "-r", "--reproducible", help="reproducible source files", action="store_true"
+    )
+    parser_generate.add_argument(
         "files", metavar="FILE", type=str, nargs="*", help="specification file"
     )
     parser_generate.set_defaults(func=generate)
@@ -98,7 +101,7 @@ def generate(args: argparse.Namespace) -> None:
     if not messages and not refinements:
         return
 
-    generator = Generator(args.prefix)
+    generator = Generator(args.prefix, reproducible=args.reproducible)
 
     print("Generating... ", end="", flush=True)
     generator.generate(messages, refinements)
