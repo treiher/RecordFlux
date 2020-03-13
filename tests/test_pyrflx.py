@@ -33,6 +33,7 @@ class TestPyRFLX(unittest.TestCase):
     package_tls_record: Package
     package_tls_alert: Package
     package_icmp: Package
+    package_test_odd_length: Package
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -45,6 +46,7 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/tls_record.rflx",
                 f"{cls.specdir}/tls_alert.rflx",
                 f"{cls.specdir}/icmp.rflx",
+                f"{cls.testdir}/test_odd_length.rflx",
             ]
         )
         cls.package_tlv = pyrflx["TLV_With_Checksum"]
@@ -52,6 +54,7 @@ class TestPyRFLX(unittest.TestCase):
         cls.package_tls_record = pyrflx["TLS_Record"]
         cls.package_tls_alert = pyrflx["TLS_Alert"]
         cls.package_icmp = pyrflx["ICMP"]
+        cls.package_test_odd_length = pyrflx["TEST"]
 
     def setUp(self) -> None:
         self.tlv = self.package_tlv["Message"]
@@ -59,6 +62,7 @@ class TestPyRFLX(unittest.TestCase):
         self.record = self.package_tls_record["TLS_Record"]
         self.alert = self.package_tls_alert["Alert"]
         self.icmp = self.package_icmp["Echo_Message"]
+        self.odd_length = self.package_test_odd_length["Test"]
 
     def test_partially_supported_packages(self) -> None:
         p = PyRFLX([f"{self.testdir}/array_message.rflx"])["Array_Message"]
@@ -593,21 +597,10 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_tlv_checksum_binary(self) -> None:
         test_bytes = b"\x01"
+        self.tlv.parse_from_bytes(test_bytes)
+        self.assertFalse(self.tlv.valid_message)
 
-        from rflx.pyrflx import PyRFLX
-        p = PyRFLX(["tests/tlv_with_checksum.rflx"])
-        m = p["TLV"]["Message"]
-        m.parse_from_bytes(test_bytes)
-
-        self.assertFalse(m.valid_message)
-
-    def test_TEST_checksum_binary(self) -> None:
+    def test_odd_length_binary(self) -> None:
         test_bytes = b"\x01\x02\x01\xff\xb8"
-
-        from rflx.pyrflx import PyRFLX
-        p = PyRFLX(["tests/test_odd_length.rflx"])
-        m = p["TEST"]["Message"]
-        m.parse_from_bytes(test_bytes)
-
-        self.assertTrue(m.valid_message)
-
+        self.odd_length.parse_from_bytes(test_bytes)
+        self.assertTrue(self.odd_length.valid_message)
