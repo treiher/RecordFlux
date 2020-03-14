@@ -592,7 +592,6 @@ class TestPyRFLX(unittest.TestCase):
         print(test_bytes.hex())
 
         self.assertTrue(self.frame.valid_message)
-
         self.assertEqual(self.frame.binary, test_bytes)
 
     def test_tlv_checksum_binary(self) -> None:
