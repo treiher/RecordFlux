@@ -605,3 +605,162 @@ class TestPyRFLX(unittest.TestCase):
         test_bytes = b"\x01\x02\x01\xff\xb8"
         self.odd_length.parse_from_bytes(test_bytes)
         self.assertTrue(self.odd_length.valid_message)
+
+    def test_parsing_ethernet_2(self) -> None:
+
+        with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
+        self.assertEqual(int("0", 16), self.frame.get("Source"))
+        self.assertEqual(int("0800", 16), self.frame.get("Type_Length_TPID"))
+        self.assertEqual(46, self.frame._fields["Payload"].length.value // 8)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(msg_as_bytes, self.frame.binary)
+
+    def test_parsing_ieee_802_3(self) -> None:
+
+        with open(f"tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_parsing_ethernet_2_vlan(self) -> None:
+
+        with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
+        self.assertEqual(int("0", 16), self.frame.get("Source"))
+        self.assertEqual(int("8100", 16), self.frame.get("Type_Length_TPID"))
+        self.assertEqual(int("8100", 16), self.frame.get("TPID"))
+        self.assertEqual(int("1", 16), self.frame.get("TCI"))
+        self.assertEqual(47, self.frame._fields["Payload"].length.value // 8)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
+        with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_invalid_ethernet_2_too_long(self) -> None:
+
+        with open("tests/ethernet_invalid_too_long.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_parsing_invalid_ethernet_2_undefined_type(self) -> None:
+
+        with open("tests/ethernet_undefined.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_ieee_802_3_invalid_length(self) -> None:
+
+        # valid message, but not valid field
+        with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+        # print(True if "TPID" in self.frame.valid_fields else False)
+        self.assertFalse(self.frame.valid_message)
+
+    def test_parsing_incomplete(self) -> None:
+
+        test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
+
+        self.frame.parse_from_bytes(test_bytes)
+
+        self.assertEqual(int("000000000001", 16), self.frame.get("Destination"))
+        self.assertEqual(int("000000000002", 16), self.frame.get("Source"))
+        assert len(self.frame.valid_fields) == 2
+        self.assertFalse(self.frame.valid_message)
+
+    def test_generating_ethernet_2(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x2e\x00\x01\x00\x00\x40\x11\x7c\xbc"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x35\x00\x35"
+            b"\x00\x1a\x01\x4e\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("0800", 16))
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", payload)
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ieee_802_3(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", 46)
+        self.frame.set("Type_Length", 46)
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ethernet_2_vlan(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("8100", 16))
+        self.frame.set("TPID", int("8100", 16))
+        self.frame.set("TCI", 1)
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ethernet_2_vlan_dynamic(self) -> None:
+        pass

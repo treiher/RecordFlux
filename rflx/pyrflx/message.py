@@ -363,7 +363,7 @@ class Message:
 
         while current_field_name != model.FINAL.name and (
             field_first_in_bitstr + field_length
-        ) < len(msg_as_bitstr):
+        ) <= len(msg_as_bitstr):
 
             current_field = self._fields[current_field_name]
             if isinstance(current_field.typeval, OpaqueValue) and not self._has_length(
@@ -418,3 +418,5 @@ class Message:
 
             self._preset_fields(current_field_name)
             current_field_name = self._next_field(current_field_name)
+            if current_field_name == "":
+                raise KeyError("cannot access next field")
