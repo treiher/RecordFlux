@@ -354,8 +354,10 @@ class Message:
 
         return expr.simplified(field_values).simplified(self.__type_literals)
 
-    def parse_from_bytes(self, msg_as_bytes: bytes) -> None:
-
+    def parse_from_bytes(self, msg_as_bytes: bytes, original_length_in_bit=0) -> None:
+        """
+        :param original_length: use this parameter, if complete length of the message is less than 1 Byte
+        """
         msg_as_bitstr = TypeValue.convert_bytes_to_bitstring(msg_as_bytes)
         current_field_name = self._next_field(model.INITIAL.name)
         field_first_in_bitstr = 0
@@ -379,13 +381,19 @@ class Message:
                 field_length = current_field.length.value
 
                 if field_length < 8:
-                    field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
+
+                    # field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
+
+                    if original_length_in_bit != 0 and original_length_in_bit < 8:
+                        field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
+
                     self._fields[current_field_name].typeval.assign_bitvalue(
                         msg_as_bitstr[field_first_in_bitstr : field_first_in_bitstr + field_length],
                         True,
                     )
                     field_first_in_bitstr = field_first_in_bitstr + field_length
-                elif field_length > 9 and field_length % 8 != 0:
+
+                elif field_length >= 9 and field_length % 8 != 0:
                     number_of_bytes = field_length // 8 + 1
                     field_bits = ""
 
@@ -403,14 +411,14 @@ class Message:
 
                     self._fields[current_field_name].typeval.assign_bitvalue(field_bits, True)
                 else:
-                    prev_first = self._fields[current_field_name].first
-                    this_first = self._fields[self._prev_field(current_field_name)].first
+                    this_first = self._fields[current_field_name].first
+                    prev_first = self._fields[self._prev_field(current_field_name)].first
                     assert isinstance(prev_first, Number)
                     assert isinstance(this_first, Number)
                     if prev_first.value == this_first.value:
                         s = prev_first.value
                     else:
-                        s = field_first_in_bitstr
+                        s = this_first.value
                     self._fields[current_field_name].typeval.assign_bitvalue(
                         msg_as_bitstr[s : s + field_length], True
                     )

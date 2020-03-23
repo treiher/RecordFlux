@@ -3,7 +3,7 @@ from typing import Any, Mapping
 
 from rflx.common import generic_repr
 from rflx.expression import TRUE, Expr, Name, Variable
-from rflx.model import Enumeration, Integer, Number, Opaque, Scalar, Type
+from rflx.model import Array, Enumeration, Integer, Message, Number, Opaque, Scalar, Type
 
 
 class NotInitializedError(Exception):
@@ -68,12 +68,24 @@ class TypeValue(ABC):
             return EnumValue(vtype)
         if isinstance(vtype, Opaque):
             return OpaqueValue(vtype)
+        if isinstance(vtype, Array):
+            return ArrayValue(vtype, vtype.element_type)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
     @staticmethod
     def convert_bytes_to_bitstring(msg: bytes) -> str:
 
-        return format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
+        binary_repr: str = ""
+
+        for i in range(0, len(msg)):
+            b = bin(msg[i]).lstrip("0b")
+            b = b.zfill(8)
+
+            binary_repr += b
+
+        b = format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
+        return binary_repr
+        # return format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
 
     @staticmethod
     def convert_bits_to_integer(bitstring: str) -> int:
@@ -231,6 +243,114 @@ class OpaqueValue(TypeValue):
 
     def assign_bitvalue(self, value: str, check: bool = True) -> None:
 
+        while len(value) % 8 != 0:
+            value = "0" + value
+
+        bytestring = b"".join(
+            [int(value[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(value), 8)]
+        )
+
+        self._value = bytestring
+
+    @property
+    def length(self) -> int:
+        self._raise_initialized()
+        return len(self._value) * 8
+
+    @property
+    def value(self) -> bytes:
+        self._raise_initialized()
+        return self._value
+
+    @property
+    def binary(self) -> str:
+        self._raise_initialized()
+        return format(int.from_bytes(self._value, "big"), f"0{self.length}b")
+
+    @property
+    def accepted_type(self) -> type:
+        return bytes
+
+    @property
+    def literals(self) -> Mapping[Name, Expr]:
+        return {}
+
+
+"""
+class MessageContainer(Type):
+
+    _value: Message
+
+    def __init__(self, msg: Message, full_name: str):
+        super().__init__(full_name)
+        _value = msg
+
+    @property
+    def size(self) -> Expr:
+        pass
+
+    def constraints(self, name: str, proof: bool = False) -> Expr:
+        pass
+"""
+
+
+class MessageValue(TypeValue):
+
+    _value: Message
+
+    def __init__(self, vtype: Message) -> None:
+        super().__init__(vtype)
+
+    def assign(self, value: Any, check: bool) -> None:
+        pass
+
+    def assign_bitvalue(self, value: Any, check: bool) -> None:
+        pass
+
+    @property
+    def value(self) -> Any:
+        pass
+
+    @property
+    def binary(self) -> str:
+        pass
+
+    @property
+    def accepted_type(self) -> type:
+        pass
+
+    @property
+    def literals(self) -> Mapping[Name, Expr]:
+        pass
+
+
+class ArrayValue(TypeValue):
+
+    # liste mit gleichen Elementen
+    # elemt type : TYpe Value
+    _tValueArray = []
+    _element_type: TypeValue
+
+    def __init__(self, vtype: Array, element_type: TypeValue) -> None:
+        """
+        An Array can only hold items of the same subclass of TypeValue
+        :param vtype:
+        :param element_type: class of TypeValue
+        """
+        _element_type = element_type
+
+        super().__init__(vtype)
+
+    def assign(self, value: bytes, check: bool = True) -> None:
+        self._value = value
+
+    def append(self, value: Type):
+        pass
+
+    def getItem(self, index: int):
+        pass
+
+    def assign_bitvalue(self, value: str, check: bool = True) -> None:
         while len(value) % 8 != 0:
             value = "0" + value
 
