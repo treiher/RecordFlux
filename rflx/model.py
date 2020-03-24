@@ -291,13 +291,35 @@ class Link(NamedTuple):
         return generic_repr(self.__class__.__name__, self._asdict())
 
 
-class AbstractMessage(Element):
-    def __init__(
-        self, full_name: str, structure: Sequence[Link], types: Mapping[Field, Type]
-    ) -> None:
+class AbstractMessage(Type):
+
+    @property
+    def size(self) -> Expr:
+        # ToDo test Method
+        msg_size: Expr = Number(0)
+        for field in self.__fields:
+            f = self.__types[field].size
+            if isinstance(f, Number):
+                msg_size += self.__types[field].size
+            else:
+                return UNDEFINED
+
+        return msg_size
+
+    def constraints(self, name: str, proof: bool = False) -> Expr:
+        # ToDo herausfinden, wofür die Methode benutzt wird
+        raise NotImplementedError
+
+    def __init__(self, full_name: str, structure: Sequence[Link], types: Mapping[Field, Type]) -> None:
+
+        super().__init__(full_name)
+
+        """
         if full_name.count(".") != 1:
             raise ModelError(f'unexpected format of message name "{full_name}"')
         self.full_name = full_name
+        """
+
         self.structure = structure
         self.__types = types
 
