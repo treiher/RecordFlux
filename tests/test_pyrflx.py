@@ -874,24 +874,11 @@ class TestPyRFLX(unittest.TestCase):
         self.assertFalse(self.tlv.valid_message)
 
     def test_parsing_tlv_error(self) -> None:
-        """
-        pragma Unreferenced (T);
-      Buffer  : Builtin_Types.Bytes_Ptr := new Builtin_Types.Bytes'(1 => 192);
-      Context : TLV.Message.Context := TLV.Message.Create;
-      Tag     : TLV.Tag;
-        begin
-      TLV.Message.Initialize (Context, Buffer);
-      TLV.Message.Verify_Message (Context);
-      Assert (TLV.Message.Valid (Context, TLV.Message.F_Tag), "Invalid Tag");
-      if TLV.Message.Valid (Context, TLV.Message.F_Tag) then
-         Tag := TLV.Message.Get_Tag (Context);
-         Assert (Tag'Image, TLV.Tag'Image (TLV.Msg_Error), "Unexpected Tag");
-      end if;
-      Assert (TLV.Message.Structural_Valid_Message (Context), "Structural invalid Message");
-      Assert (TLV.Message.Valid_Message (Context), "Invalid Message");
 
-        :return:
-        """
+        test_bytes = b"\xc0"
+        self.tlv.parse_from_bytes(test_bytes)
+        self.assertEqual(self.tlv.get("Tag"), "Msg_Error")
+        self.assertTrue(self.tlv.valid_message)
 
     def test_parsing_invalid_tlv_invalid_tag(self) -> None:
         test_bytes = b"\x00\x00"
@@ -914,7 +901,7 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv.set("Tag", "Msg_Data")
         self.tlv.set("Length", 0)
 
-        # Die Nachricht kann nicht valid werden, da Value nich gesetzt werden
+        # Die Nachricht kann nicht valid werden, da Value nicht gesetzt werden
         # kann, weil Length 0 ist
         # self.tlv.set("Value", b"\x00\x00\x00\x00")
 
