@@ -1,9 +1,10 @@
+import itertools
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, Mapping
 
 from rflx.common import generic_repr
 from rflx.expression import TRUE, Expr, Name, Variable
-from rflx.model import Enumeration, Integer, Number, Opaque, Scalar, Type
+from rflx.model import Enumeration, Integer, Number, Opaque, Scalar, Type, Array
 
 
 class NotInitializedError(Exception):
@@ -68,6 +69,8 @@ class TypeValue(ABC):
             return EnumValue(vtype)
         if isinstance(vtype, Opaque):
             return OpaqueValue(vtype)
+        if isinstance(vtype, Array):
+            return ArrayValue(vtype)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
     @staticmethod
@@ -258,6 +261,51 @@ class OpaqueValue(TypeValue):
     @property
     def accepted_type(self) -> type:
         return bytes
+
+    @property
+    def literals(self) -> Mapping[Name, Expr]:
+        return {}
+
+
+class ArrayValue(TypeValue):
+
+    _element_list = [TypeValue]
+    _element_list_type: type
+
+    # ToDo what does "check" do?
+    def assign(self, value: [TypeValue], check: bool) -> None:
+
+        _element_list_type = type(value[0])
+
+        # check if all elements are of the same class
+        for v in value:
+            if not isinstance(v, _element_list_type):
+                raise ValueError("members of an array must not be of different classes")
+
+        _element_list = value
+
+    def assign_bitvalue(self, value: Any, check: bool) -> None:
+        pass
+
+    @property
+    def value(self) -> Any:
+        self._raise_initialized()
+        return self._element_list
+
+    @property
+    def binary(self) -> str:
+        self._raise_initialized()
+
+        binary_repr: str = ""
+        for element in self._element_list:
+            binary_repr += element.binary
+
+        return binary_repr
+
+    @property
+    def accepted_type(self) -> type:
+        self._raise_initialized()
+        return self._element_list_type
 
     @property
     def literals(self) -> Mapping[Name, Expr]:
