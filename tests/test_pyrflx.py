@@ -35,6 +35,7 @@ class TestPyRFLX(unittest.TestCase):
     package_tls_alert: Package
     package_icmp: Package
     package_test_odd_length: Package
+    package_ipv4: Package
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -48,6 +49,7 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/tls_alert.rflx",
                 f"{cls.specdir}/icmp.rflx",
                 f"{cls.testdir}/test_odd_length.rflx",
+                f"{cls.specdir}/ipv4.rflx",
             ]
         )
         cls.package_tlv = pyrflx["TLV"]
@@ -56,6 +58,7 @@ class TestPyRFLX(unittest.TestCase):
         cls.package_tls_alert = pyrflx["TLS_Alert"]
         cls.package_icmp = pyrflx["ICMP"]
         cls.package_test_odd_length = pyrflx["TEST"]
+        cls.package_ipv4 = pyrflx["IPv4"]
 
     def setUp(self) -> None:
         self.tlv = self.package_tlv["Message"]
@@ -64,6 +67,8 @@ class TestPyRFLX(unittest.TestCase):
         self.alert = self.package_tls_alert["Alert"]
         self.icmp = self.package_icmp["Echo_Message"]
         self.odd_length = self.package_test_odd_length["Test"]
+        self.ipv4 = self.package_ipv4["Packet"]
+        self.ipv4_option = self.package_ipv4["Option"]
 
     def test_partially_supported_packages(self) -> None:
         p = PyRFLX([f"{self.testdir}/array_message.rflx"])["Test"]
@@ -605,3 +610,13 @@ class TestPyRFLX(unittest.TestCase):
         test_bytes = b"\x01\x02\x01\xff\xb8"
         self.odd_length.parse_from_bytes(test_bytes)
         self.assertTrue(self.odd_length.valid_message)
+
+    def test_parsing_ipv4_with_options(self) -> None:
+
+        with open("tests/ipv4-options_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.ipv4.parse_from_bytes(msg_as_bytes)
+
+        self.assertTrue(self.ipv4.valid_message)
+        self.assertEqual(self.ipv4.binary, msg_as_bytes)
