@@ -292,10 +292,8 @@ class Link(NamedTuple):
 
 
 class AbstractMessage(Type):
-
     @property
     def size(self) -> Expr:
-        # ToDo test Method
         msg_size: Expr = Number(0)
         for field in self.__fields:
             f = self.__types[field].size
@@ -307,10 +305,11 @@ class AbstractMessage(Type):
         return msg_size
 
     def constraints(self, name: str, proof: bool = False) -> Expr:
-        # ToDo herausfinden, wofür die Methode benutzt wird
         raise NotImplementedError
 
-    def __init__(self, full_name: str, structure: Sequence[Link], types: Mapping[Field, Type]) -> None:
+    def __init__(
+        self, full_name: str, structure: Sequence[Link], types: Mapping[Field, Type]
+    ) -> None:
 
         super().__init__(full_name)
 

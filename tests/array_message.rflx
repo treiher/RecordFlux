@@ -1,4 +1,4 @@
-package Test is
+package Test_Array_Message is
 
    type Byte is mod 256;
    type Bytes is array of Byte;

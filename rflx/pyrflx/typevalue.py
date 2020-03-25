@@ -1,10 +1,12 @@
-import itertools
+import re
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, Mapping
 
+from rflx import model
 from rflx.common import generic_repr
 from rflx.expression import TRUE, Expr, Name, Variable
-from rflx.model import Enumeration, Integer, Number, Opaque, Scalar, Type, Array
+from rflx.model import Array, Enumeration, Integer, Number, Opaque, Scalar, Type
+from rflx.pyrflx import message
 
 
 class NotInitializedError(Exception):
@@ -62,7 +64,7 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @classmethod
-    def construct(cls, vtype: Type) -> "TypeValue":
+    def construct(cls, vtype: Type, all_messages: [model.Message]) -> "TypeValue":
         if isinstance(vtype, Integer):
             return IntegerValue(vtype)
         if isinstance(vtype, Enumeration):
@@ -70,7 +72,7 @@ class TypeValue(ABC):
         if isinstance(vtype, Opaque):
             return OpaqueValue(vtype)
         if isinstance(vtype, Array):
-            return ArrayValue(vtype)
+            return ArrayValue(vtype, all_messages)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
     @staticmethod
@@ -269,43 +271,127 @@ class OpaqueValue(TypeValue):
 
 class ArrayValue(TypeValue):
 
-    _element_list = [TypeValue]
-    _element_list_type: type
+    _value: [TypeValue]
+    _element_list_type: Any
+    _element_list_type_name: str
+    _is_message_array: bool
+    _all_messages: [model.Message]
 
-    # ToDo what does "check" do?
-    def assign(self, value: [TypeValue], check: bool) -> None:
+    def __init__(self, vtype: Array, all_messages: [model.Message]) -> None:
+        super().__init__(vtype)
+        self._element_list_type_name = vtype.element_type.full_name
+        self._all_messages = all_messages
 
-        _element_list_type = type(value[0])
+        # detect if Array of Messages
+        for m in all_messages:
+            if m.full_name == self._element_list_type_name:
+                print("debug: detected array of messages")
+                self._element_list_type = m
+                self._is_message_array = True
+                return
 
-        # check if all elements are of the same class
+        # if not Array of Messages it must be an Array of normal TypeValues
+        for m in all_messages:
+            # find packet
+            if m.package == vtype.element_type.package:
+                # iterate through types within packet
+                for v in m.types.values():
+                    if (
+                        v.full_name == self._element_list_type_name
+                        or re.match(v.full_name, "__BUILTINS__.*") is not None
+                    ):
+                        print("debug: detected array of typeValues")
+                        self._element_list_type = v
+                        self._is_message_array = False
+
+    def assign(self, value: [], check: bool) -> None:
+
+        # check if all elements are of the same class and messages are valid
         for v in value:
-            if not isinstance(v, _element_list_type):
+            if self._is_message_array and not isinstance(v._model, type(self._element_list_type)):
+                raise ValueError("members of an array must not be of different classes")
+            if self._is_message_array and not v.valid_message:
+                raise ValueError("cannot assign array of messages: messages must be valid")
+            if not self._is_message_array and not isinstance(
+                v._type, type(self._element_list_type)
+            ):
                 raise ValueError("members of an array must not be of different classes")
 
-        _element_list = value
+        self._value = value
 
-    def assign_bitvalue(self, value: Any, check: bool) -> None:
-        pass
+    def assign_bitvalue(self, value: str, check: bool) -> None:
+
+        self._value = []
+        # parse array of nested messages
+        if self._is_message_array:
+
+            nested_messages_array_bytes = b"".join(
+                [int(value[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(value), 8)]
+            )
+
+            while len(nested_messages_array_bytes) != 0:
+                array_nested_message = message.Message(self._element_list_type, self._all_messages)
+                try:
+                    array_nested_message.parse_from_bytes(nested_messages_array_bytes)
+                except Exception as e:
+                    raise ValueError(
+                        f"cannot parse nested messages in array of type {self._element_list_type_name}: {e}"
+                    )
+                self._value.append(array_nested_message)
+                # shorten bytestring by len(bytes) of parsed message to parse next message
+                nested_messages_array_bytes = nested_messages_array_bytes[
+                    len(array_nested_message.binary) :
+                ]
+
+            # ToDO check if all messages are valid? additional checks?
+            return
+
+        # parse array of typevalues
+        while len(value) != 0:
+            array_elem_typevalue = TypeValue.construct(self._element_list_type, self._all_messages)
+            array_elem_typevalue.assign_bitvalue(value[: self._element_list_type.size.value], True)
+            self._value.append(array_elem_typevalue)
+            value = value[self._element_list_type.size.value :]
+
+        return
 
     @property
-    def value(self) -> Any:
+    def length(self) -> int:
         self._raise_initialized()
-        return self._element_list
+
+        if self._is_message_array:
+            b = 0
+            for element in self._value:
+                b += len(element.binary)
+            return b * 8
+
+        return len(self.binary)
+
+    @property
+    def value(self) -> []:
+        self._raise_initialized()
+        return self._value
 
     @property
     def binary(self) -> str:
         self._raise_initialized()
 
+        if self._is_message_array:
+            binary_repr: bytes = b""
+            for element in self._value:
+                binary_repr += element.binary
+
+            return TypeValue.convert_bytes_to_bitstring(binary_repr)
+
         binary_repr: str = ""
-        for element in self._element_list:
+        for element in self._value:
             binary_repr += element.binary
 
         return binary_repr
 
     @property
     def accepted_type(self) -> type:
-        self._raise_initialized()
-        return self._element_list_type
+        return type([])
 
     @property
     def literals(self) -> Mapping[Name, Expr]:

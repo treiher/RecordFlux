@@ -1,11 +1,13 @@
-package Test is
+package Test_Array_TypeValue is
 
    type Byte is mod 256;
    type Bytes is array of Byte;
 
    type Foo is
       message
-         Byte : Byte;
+         Length : Byte
+            then Byte with Length => Length * 8;
+         Byte : Bytes;
       end message;
 
    type Bar is array of Foo;
