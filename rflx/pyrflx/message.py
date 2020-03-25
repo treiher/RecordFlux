@@ -18,7 +18,7 @@ from rflx.expression import (
     Variable,
 )
 
-from .typevalue import OpaqueValue, ScalarValue, TypeValue
+from .typevalue import ArrayValue, OpaqueValue, ScalarValue, TypeValue
 
 
 class Field:
@@ -55,10 +55,12 @@ class Field:
 
 
 class Message:
-    def __init__(self, message_model: model.Message) -> None:
+    def __init__(self, message_model: model.Message, all_messages: [model.Message]) -> None:
+        self._all_defined_messages = all_messages
         self._model = message_model
         self._fields: Dict[str, Field] = {
-            f.name: Field(TypeValue.construct(self._model.types[f])) for f in self._model.fields
+            f.name: Field(TypeValue.construct(self._model.types[f], all_messages))
+            for f in self._model.fields
         }
         self.__type_literals: Mapping[Name, Expr] = {}
         self._last_field: str = self._next_field(model.INITIAL.name)
@@ -72,7 +74,7 @@ class Message:
         self._preset_fields(model.INITIAL.name)
 
     def __copy__(self) -> "Message":
-        new = Message(self._model)
+        new = Message(self._model, self._all_defined_messages)
         return new
 
     def __repr__(self) -> str:
@@ -182,6 +184,12 @@ class Message:
             flength = field.typeval.length
             field.typeval.clear()
             raise ValueError(f"invalid data length: {field.length.value} != {flength}")
+
+        if isinstance(field.typeval, ArrayValue) and field.typeval.length != field.length.value:
+            flength = field.typeval.length
+            field.typeval.clear()
+            raise ValueError(f"invalid data length: {field.length.value} != {flength}")
+
         self._preset_fields(fld)
 
     def _preset_fields(self, fld: str) -> None:
@@ -356,20 +364,21 @@ class Message:
 
     def parse_from_bytes(self, msg_as_bytes: bytes, original_length_in_bit=0) -> None:
         """
-        :param original_length: use this parameter, if complete length of the message is less than 1 Byte
+        :param original_length_in_bit: use this parameter, if complete length of the message is less than 1 Byte
         """
+
         msg_as_bitstr = TypeValue.convert_bytes_to_bitstring(msg_as_bytes)
         current_field_name = self._next_field(model.INITIAL.name)
         field_first_in_bitstr = 0
         field_length = 0
 
         while current_field_name != model.FINAL.name and (
-                field_first_in_bitstr + field_length
+            field_first_in_bitstr + field_length
         ) <= len(msg_as_bitstr):
 
             current_field = self._fields[current_field_name]
             if isinstance(current_field.typeval, OpaqueValue) and not self._has_length(
-                    current_field_name
+                current_field_name
             ):
                 self._fields[current_field_name].first = self._get_first(current_field_name)
                 self._fields[current_field_name].typeval.assign_bitvalue(
@@ -388,7 +397,7 @@ class Message:
                         field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
 
                     self._fields[current_field_name].typeval.assign_bitvalue(
-                        msg_as_bitstr[field_first_in_bitstr: field_first_in_bitstr + field_length],
+                        msg_as_bitstr[field_first_in_bitstr : field_first_in_bitstr + field_length],
                         True,
                     )
                     field_first_in_bitstr = field_first_in_bitstr + field_length
@@ -399,15 +408,15 @@ class Message:
 
                     for _ in itertools.repeat(None, number_of_bytes - 1):
                         field_bits += msg_as_bitstr[
-                                      field_first_in_bitstr: field_first_in_bitstr + 8
-                                      ]
+                            field_first_in_bitstr : field_first_in_bitstr + 8
+                        ]
                         field_first_in_bitstr += 8
 
                     assert isinstance(current_field.first, Number)
                     k = field_length // number_of_bytes + 1
                     field_bits += msg_as_bitstr[
-                                  field_first_in_bitstr + 8 - k: current_field.first.value + field_length
-                                  ]
+                        field_first_in_bitstr + 8 - k : current_field.first.value + field_length
+                    ]
 
                     self._fields[current_field_name].typeval.assign_bitvalue(field_bits, True)
                 else:
@@ -420,7 +429,7 @@ class Message:
                     else:
                         s = this_first.value
                     self._fields[current_field_name].typeval.assign_bitvalue(
-                        msg_as_bitstr[s: s + field_length], True
+                        msg_as_bitstr[s : s + field_length], True
                     )
                     field_first_in_bitstr = s + field_length
 

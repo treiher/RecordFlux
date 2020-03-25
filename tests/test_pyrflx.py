@@ -1,6 +1,8 @@
 import unittest
 from tempfile import TemporaryDirectory
 
+from rflx import model
+from rflx.expression import UNDEFINED, Expr
 from rflx.model import (
     FINAL,
     INITIAL,
@@ -35,6 +37,8 @@ class TestPyRFLX(unittest.TestCase):
     package_icmp: Package
     package_test_odd_length: Package
     package_ipv4: Package
+    package_array_typevalue: Package
+    package_array_nested_msg: Package
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -49,6 +53,8 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/icmp.rflx",
                 f"{cls.testdir}/test_odd_length.rflx",
                 f"{cls.specdir}/ipv4.rflx",
+                f"{cls.testdir}/array_message.rflx",
+                f"{cls.testdir}/array_type.rflx",
             ]
         )
         cls.package_tlv = pyrflx["TLV_With_Checksum"]
@@ -58,8 +64,11 @@ class TestPyRFLX(unittest.TestCase):
         cls.package_icmp = pyrflx["ICMP"]
         cls.package_test_odd_length = pyrflx["TEST"]
         cls.package_ipv4 = pyrflx["IPv4"]
+        cls.package_array_nested_msg = pyrflx["Test_Array_Message"]
+        cls.package_array_typevalue = pyrflx["Test_Array_TypeValue"]
 
     def setUp(self) -> None:
+        # Messages
         self.tlv = self.package_tlv["Message"]
         self.frame = self.package_ethernet["Frame"]
         self.record = self.package_tls_record["TLS_Record"]
@@ -68,6 +77,8 @@ class TestPyRFLX(unittest.TestCase):
         self.odd_length = self.package_test_odd_length["Test"]
         self.ipv4 = self.package_ipv4["Packet"]
         self.ipv4_option = self.package_ipv4["Option"]
+        self.array_test_nested_msg = self.package_array_nested_msg["Bars"]
+        self.array_test_typeval = self.package_array_typevalue["Foo"]
 
     def test_partially_supported_packages(self) -> None:
         p = PyRFLX([f"{self.testdir}/array_message.rflx"])["Array_Message"]
@@ -605,6 +616,222 @@ class TestPyRFLX(unittest.TestCase):
         self.odd_length.parse_from_bytes(test_bytes)
         self.assertTrue(self.odd_length.valid_message)
 
+    def test_parsing_ethernet_2(self) -> None:
+
+        with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
+        self.assertEqual(int("0", 16), self.frame.get("Source"))
+        self.assertEqual(int("0800", 16), self.frame.get("Type_Length_TPID"))
+        self.assertEqual(46, self.frame._fields["Payload"].length.value // 8)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(msg_as_bytes, self.frame.binary)
+
+    def test_parsing_ieee_802_3(self) -> None:
+
+        with open(f"tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_parsing_ethernet_2_vlan(self) -> None:
+
+        with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
+        self.assertEqual(int("0", 16), self.frame.get("Source"))
+        self.assertEqual(int("8100", 16), self.frame.get("Type_Length_TPID"))
+        self.assertEqual(int("8100", 16), self.frame.get("TPID"))
+        self.assertEqual(int("1", 16), self.frame.get("TCI"))
+        self.assertEqual(47, self.frame._fields["Payload"].length.value // 8)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
+        with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_invalid_ethernet_2_too_long(self) -> None:
+
+        with open("tests/ethernet_invalid_too_long.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_parsing_invalid_ethernet_2_undefined_type(self) -> None:
+
+        with open("tests/ethernet_undefined.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(KeyError, "cannot access next field"):
+            self.frame.parse_from_bytes(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_ieee_802_3_invalid_length(self) -> None:
+
+        # valid message, but not valid field
+        with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+        # print(True if "TPID" in self.frame.valid_fields else False)
+        self.assertFalse(self.frame.valid_message)
+
+    def test_parsing_incomplete(self) -> None:
+
+        test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
+
+        self.frame.parse_from_bytes(test_bytes)
+
+        self.assertEqual(int("000000000001", 16), self.frame.get("Destination"))
+        self.assertEqual(int("000000000002", 16), self.frame.get("Source"))
+        assert len(self.frame.valid_fields) == 2
+        self.assertFalse(self.frame.valid_message)
+
+    def test_generating_ethernet_2(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x2e\x00\x01\x00\x00\x40\x11\x7c\xbc"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x35\x00\x35"
+            b"\x00\x1a\x01\x4e\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("0800", 16))
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", payload)
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ieee_802_3(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", 46)
+        self.frame.set("Type_Length", 46)
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ethernet_2_vlan(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("8100", 16))
+        self.frame.set("TPID", int("8100", 16))
+        self.frame.set("TCI", 1)
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        print(self.frame.binary.hex())
+        print(msg_as_bytes.hex())
+
+        self.assertEqual(self.frame.binary, msg_as_bytes)
+
+    def test_generating_ethernet_2_vlan_dynamic(self) -> None:
+        pass
+
+    # rflx-in_ethernet-test
+
+    def test_parsing_ipv4_in_ethernet(self) -> None:
+        pass
+
+    def test_test_generating_ipv4_in_ethernet(self) -> None:
+        pass
+
+    # reflx-in_ipv4_test
+
+    def test_parsing_udp_in_ipv4(self) -> None:
+        pass
+
+    def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
+        pass
+
+    def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
+        pass
+
+    # rflx-in_tlv-tests
+
+    def test_null_in_tlv(self) -> None:
+        pass
+
+    # rflx ipv4 tests
+
+    def test_parsing_ipv4(self) -> None:
+
+        with open("tests/ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.ipv4.parse_from_bytes(msg_as_bytes)
+
+        self.assertEqual(self.ipv4.get("Version"), 4)
+        self.assertEqual(self.ipv4.get("IHL"), 5)
+        self.assertEqual(self.ipv4.get("DSCP"), 0)
+        self.assertEqual(self.ipv4.get("ECN"), 0)
+        self.assertEqual(self.ipv4.get("Total_Length"), 44)
+        self.assertEqual(self.ipv4.get("Identification"), 1)
+        self.assertEqual(self.ipv4.get("Flag_R"), "False")
+        self.assertEqual(self.ipv4.get("Flag_DF"), "False")
+        self.assertEqual(self.ipv4.get("Flag_MF"), "False")
+        self.assertEqual(self.ipv4.get("Fragment_Offset"), 0)
+        self.assertEqual(self.ipv4.get("TTL"), 64)
+        self.assertEqual(self.ipv4.get("Protocol"), "PROTOCOL_UDP")
+        self.assertEqual(self.ipv4.get("Header_Checksum"), int("7CBE", 16))
+        self.assertEqual(self.ipv4.get("Source"), int("7f000001", 16))
+        self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
+        self.assertEqual(self.ipv4._fields["Payload"].length, Number(192))
+
+    def test_parsing_ipv4_option(self) -> None:
+        pass
+
     def test_parsing_ipv4_with_options(self) -> None:
 
         with open("tests/ipv4-options_udp.raw", "rb") as file:
@@ -614,3 +841,106 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertTrue(self.ipv4.valid_message)
         self.assertEqual(self.ipv4.binary, msg_as_bytes)
+
+    def test_generating_ipv4(self) -> None:
+        pass
+
+    def test_generating_ipv4_option(self) -> None:
+        pass
+
+    # rflx tlv tests
+
+    # works only with tlv not tlv_checksum
+    def test_parsing_tlv_data(self) -> None:
+
+        test_bytes = b"\x40\x04\x00\x00\x00\x00"
+        self.tlv.parse_from_bytes(test_bytes)
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(test_bytes, self.tlv.binary)
+
+    def test_parsing_tlv_data_zero(self) -> None:
+        test_bytes = b"\x40\x00"
+        self.tlv.parse_from_bytes(test_bytes)
+        self.assertEqual(self.tlv.get("Tag"), "Msg_Data")
+        self.assertEqual(self.tlv.get("Length"), 0)
+        self.assertFalse(self.tlv.valid_message)
+
+    def test_parsing_tlv_error(self) -> None:
+
+        test_bytes = b"\xc0"
+        self.tlv.parse_from_bytes(test_bytes)
+        self.assertEqual(self.tlv.get("Tag"), "Msg_Error")
+        self.assertTrue(self.tlv.valid_message)
+
+    def test_parsing_invalid_tlv_invalid_tag(self) -> None:
+        test_bytes = b"\x00\x00"
+        with self.assertRaisesRegex(KeyError, "Number 0 is not a valid enum value"):
+            self.tlv.parse_from_bytes(test_bytes)
+
+    def test_generating_tlv_data(self) -> None:
+        expected = b"\x40\x04\x00\x00\x00\x00"
+
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv.set("Length", 4)
+        self.tlv.set("Value", b"\x00\x00\x00\x00")
+
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(self.tlv.binary, expected)
+
+    def test_generating_tlv_data_zero(self) -> None:
+
+        expected = b"\x40\x00"
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv.set("Length", 0)
+
+        # Die Nachricht kann nicht valid werden, da Value nicht gesetzt werden
+        # kann, weil Length 0 ist
+        # self.tlv.set("Value", b"\x00\x00\x00\x00")
+
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(self.tlv.binary, expected)
+
+    def test_generating_tlv_error(self) -> None:
+
+        self.tlv.set("Tag", "Msg_Error")
+        self.assertTrue(self.tlv.valid_message)
+
+    def test_array_parse_form_bytes(self) -> None:
+
+        self.array_test_nested_msg.parse_from_bytes(b"\x02\x05\x06")
+        self.assertEqual(self.array_test_nested_msg.binary, b"\x02\x05\x06")
+        self.array_test_typeval.parse_from_bytes(b"\x03\x05\x06\x07")
+        self.assertEqual(self.array_test_typeval.binary, b"\x03\x05\x06\x07")
+
+    def test_array_nested_messages(self) -> None:
+
+        array_message_one = self.package_array_nested_msg["Foo"]
+        array_message_two = self.package_array_nested_msg["Foo"]
+
+        array_message_one.set("Byte", 5)
+        array_message_two.set("Byte", 6)
+
+        foos = [array_message_one, array_message_two]
+
+        self.array_test_nested_msg.set("Length", 2)
+        self.array_test_nested_msg.set("Bars", foos)
+
+        self.assertTrue(self.array_test_nested_msg.valid_message)
+        self.assertEqual(b"\x02\x05\x06", self.array_test_nested_msg.binary)
+
+    def test_array_typeValues(self) -> None:
+
+        a = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_One", Number(256)))
+        b = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_Two", Number(256)))
+        c = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_Three", Number(256)))
+        a.assign(5)
+        b.assign(6)
+        c.assign(7)
+
+        byte_array = [a, b, c]
+
+        self.array_test_typeval.set("Length", 3)
+        self.array_test_typeval.set("Byte", byte_array)
+
+        self.assertTrue(self.array_test_typeval.valid_message)
+        self.assertEqual(self.array_test_typeval.binary, b"\x03\x05\x06\x07")
