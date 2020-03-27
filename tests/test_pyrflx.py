@@ -39,6 +39,7 @@ class TestPyRFLX(unittest.TestCase):
     package_ipv4: Package
     package_array_typevalue: Package
     package_array_nested_msg: Package
+    package_udp: Package
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -55,6 +56,7 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/ipv4.rflx",
                 f"{cls.testdir}/array_message.rflx",
                 f"{cls.testdir}/array_type.rflx",
+                f"{cls.specdir}/udp.rflx",
             ]
         )
         cls.package_tlv = pyrflx["TLV_With_Checksum"]
@@ -66,6 +68,7 @@ class TestPyRFLX(unittest.TestCase):
         cls.package_ipv4 = pyrflx["IPv4"]
         cls.package_array_nested_msg = pyrflx["Test_Array_Message"]
         cls.package_array_typevalue = pyrflx["Test_Array_TypeValue"]
+        cls.package_udp = pyrflx["UDP"]
 
     def setUp(self) -> None:
         # Messages
@@ -79,6 +82,7 @@ class TestPyRFLX(unittest.TestCase):
         self.ipv4_option = self.package_ipv4["Option"]
         self.array_test_nested_msg = self.package_array_nested_msg["Bars"]
         self.array_test_typeval = self.package_array_typevalue["Foo"]
+        self.udp = self.package_udp["Datagram"]
 
     def test_partially_supported_packages(self) -> None:
         p = PyRFLX([f"{self.testdir}/array_message.rflx"])["Array_Message"]
@@ -784,7 +788,10 @@ class TestPyRFLX(unittest.TestCase):
     def test_parsing_ipv4_in_ethernet(self) -> None:
         pass
 
-    def test_test_generating_ipv4_in_ethernet(self) -> None:
+    def test_generating_ipv4_in_ethernet(self) -> None:
+
+        # ToDo wird in der Methode test_generating_udp_in_ipv4_in_ethernet mit getestet
+
         pass
 
     # reflx-in_ipv4_test
@@ -793,10 +800,61 @@ class TestPyRFLX(unittest.TestCase):
         pass
 
     def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-        pass
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        # ToDO um diesen Test zu schreiben müsste eine contains methode hinzugefügt werden
 
     def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
-        pass
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse_from_bytes(msg_as_bytes)
+
+        parsed_frame = self.frame.binary
+
+        b = b""
+        for i in range(0, 18):
+            b += b"\x00"
+
+        self.udp.set("Source_Port", 53)
+        self.udp.set("Destination_Port", 53)
+        self.udp.set("Length", 26)
+        self.udp.set("Checksum", int("014E", 16))
+        self.udp.set("Payload", b)
+        udp_binary = self.udp.binary
+
+        self.ipv4.set("Version", 4)
+        self.ipv4.set("IHL", 5)
+        self.ipv4.set("DSCP", 0)
+        self.ipv4.set("ECN", 0)
+        self.ipv4.set("Total_Length", 46)
+        self.ipv4.set("Identification", 1)
+        self.ipv4.set("Flag_R", "False")
+        self.ipv4.set("Flag_DF", "False")
+        self.ipv4.set("Flag_MF", "False")
+        self.ipv4.set("Fragment_Offset", 0)
+        self.ipv4.set("TTL", 64)
+        self.ipv4.set("Protocol", "PROTOCOL_UDP")
+        self.ipv4.set("Header_Checksum", int("7CBC", 16))
+        self.ipv4.set("Source", int("7f000001", 16))
+        self.ipv4.set("Destination", int("7f000001", 16))
+        self.ipv4.set("Payload", udp_binary)
+        ip_binary = self.ipv4.binary
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("0800", 16))
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", ip_binary)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(parsed_frame, self.frame.binary)
+
 
     # rflx-in_tlv-tests
 
@@ -829,9 +887,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
         self.assertEqual(self.ipv4._fields["Payload"].length, Number(192))
 
-    def test_parsing_ipv4_option(self) -> None:
-        pass
-
     def test_parsing_ipv4_with_options(self) -> None:
 
         with open("tests/ipv4-options_udp.raw", "rb") as file:
@@ -839,14 +894,27 @@ class TestPyRFLX(unittest.TestCase):
 
         self.ipv4.parse_from_bytes(msg_as_bytes)
 
+        for i in self.ipv4.get("Options"):
+            self.assertTrue(i.valid_message)
+
         self.assertTrue(self.ipv4.valid_message)
         self.assertEqual(self.ipv4.binary, msg_as_bytes)
 
     def test_generating_ipv4(self) -> None:
         pass
 
-    def test_generating_ipv4_option(self) -> None:
+    def test_parsing_ipv4_option(self) -> None:
         pass
+
+    def test_generating_ipv4_option(self) -> None:
+
+        self.ipv4_option.set("Copied", "False")
+        self.ipv4_option.set("Option_Class", "Debugging_And_Measurement")
+        self.ipv4_option.set("Option_Number", 4)
+        self.ipv4_option.set("Option_Length", 3)
+        self.ipv4_option.set("Option_Data", b"\x2a")
+
+        self.assertTrue(self.ipv4_option.valid_message)
 
     # rflx tlv tests
 
