@@ -1,12 +1,13 @@
 import re
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Any, Mapping
+from typing import Any, Mapping, Union
 
 from rflx import model
 from rflx.common import generic_repr
 from rflx.expression import TRUE, Expr, Name, Variable
 from rflx.model import Array, Enumeration, Integer, Number, Opaque, Scalar, Type
 from rflx.pyrflx import message
+from rflx.pyrflx.message import Bitstring
 
 
 class NotInitializedError(Exception):
@@ -78,16 +79,6 @@ class TypeValue(ABC):
             return ArrayValue(vtype, all_messages)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
-    @staticmethod
-    def convert_bytes_to_bitstring(msg: bytes) -> str:
-
-        return format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
-
-    @staticmethod
-    def convert_bits_to_integer(bitstring: str) -> int:
-
-        return int(bitstring, 2)
-
 
 class ScalarValue(TypeValue):
 
@@ -141,9 +132,8 @@ class IntegerValue(ScalarValue):
             raise ValueError(f"value {value} not in type range {self._first} .. {self._last}")
         self._value = value
 
-    def assign_bitvalue(self, value: str, check: bool = True) -> None:
-
-        self.assign(self.convert_bits_to_integer(value))
+    def assign_bitvalue(self, value: Bitstring, check: bool = True) -> None:
+        self.assign(int(value))
 
     @property
     def expr(self) -> Number:
@@ -191,9 +181,9 @@ class EnumValue(ScalarValue):
         )
         self._value = value
 
-    def assign_bitvalue(self, value: str, check: bool = True) -> None:
+    def assign_bitvalue(self, value: Bitstring, check: bool = True) -> None:
 
-        value_as_int: int = self.convert_bits_to_integer(value)
+        value_as_int: int = int(value)
         if not Number(value_as_int) in self.literals.values():
             raise KeyError(f"Number {value_as_int} is not a valid enum value")
 
@@ -273,7 +263,7 @@ class OpaqueValue(TypeValue):
 class ArrayValue(TypeValue):
 
     _value: [TypeValue]
-    _element_list_type: Any
+    _element_list_type: Union[TypeValue, model.Message]
     _element_list_type_name: str
     _is_message_array: bool
     _all_messages: [model.Message]
@@ -289,6 +279,7 @@ class ArrayValue(TypeValue):
                 print("debug: detected array of messages")
                 self._element_list_type = m
                 self._is_message_array = True
+
                 return
 
         # if not Array of Messages it must be an Array of normal TypeValues
@@ -338,13 +329,18 @@ class ArrayValue(TypeValue):
                         f"cannot parse nested messages in array of type "
                         f"{self._element_list_type_name}: {e}"
                     )
-                self._value.append(array_nested_message)
+                if array_nested_message.valid_message:
+                    self._value.append(array_nested_message)
+                else:
+                    raise ValueError(
+                        f"cannot append to array: message is invalid {array_nested_message.name}"
+                    )
+
                 # shorten bytestring by len(bytes) of parsed message to parse next message
                 nested_messages_array_bytes = nested_messages_array_bytes[
                     len(array_nested_message.binary) :
                 ]
 
-            # ToDO check if all messages are valid? additional checks?
             return
 
         # parse array of typevalues
@@ -382,7 +378,7 @@ class ArrayValue(TypeValue):
             for element in self._value:
                 binary_repr += element.binary
 
-            return TypeValue.convert_bytes_to_bitstring(binary_repr)
+            return Bitstring.convert_bytes_to_string(binary_repr)
 
         binary_repr: str = ""
         for element in self._value:

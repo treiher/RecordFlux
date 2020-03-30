@@ -18,7 +18,7 @@ from rflx.expression import (
     Variable,
 )
 
-from . import abstract_message
+from .bitstring import Bitstring
 from .typevalue import ArrayValue, OpaqueValue, ScalarValue, TypeValue
 
 
@@ -55,7 +55,7 @@ class Field:
         return Sub(Add(self.first, self.length), Number(1)).simplified()
 
 
-class Message(abstract_message.IMessage):
+class Message:
     def __init__(self, message_model: model.Message, all_messages: [model.Message]) -> None:
         self._all_defined_messages = all_messages
         self._model = message_model
@@ -154,22 +154,35 @@ class Message(abstract_message.IMessage):
 
             field = self._fields[fld]
 
-            if not isinstance(value, field.typeval.accepted_type):
-                raise TypeError(
-                    f"cannot assign different types: {field.typeval.accepted_type.__name__}"
-                    f" != {type(value).__name__}"
-                )
-
-            # if field is of type opaque and does not have a specified length
-            if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
-                assert isinstance(value, bytes)
-                field.first = self._get_first(fld)
-                field.typeval.assign(value, True)
-                field.length = Number(field.typeval.length)
+            # if value is bitring
+            if isinstance(value, Bitstring):
+                if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
+                    field.first = self._get_first(fld)
+                    field.typeval.assign_bitvalue(str(value), True)
+                    field.length = Number(field.typeval.length)
+                else:
+                    field.first = self._get_first(fld)
+                    field.length = self._get_length(fld)
+                    field.typeval.assign_bitvalue(str(value), True)
             else:
-                field.first = self._get_first(fld)
-                field.length = self._get_length(fld)
-                field.typeval.assign(value, True)
+
+                # check if value is not a bitstring
+                if not isinstance(value, field.typeval.accepted_type):
+                    raise TypeError(
+                        f"cannot assign different types: {field.typeval.accepted_type.__name__}"
+                        f" != {type(value).__name__}"
+                    )
+
+                # if field is of type opaque and does not have a specified length
+                if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
+                    assert isinstance(value, bytes)
+                    field.first = self._get_first(fld)
+                    field.typeval.assign(value, True)
+                    field.length = Number(field.typeval.length)
+                else:
+                    field.first = self._get_first(fld)
+                    field.length = self._get_length(fld)
+                    field.typeval.assign(value, True)
 
         else:
             raise KeyError(f"cannot access field {fld}")
@@ -244,6 +257,10 @@ class Message(abstract_message.IMessage):
                 or not field_val.first.value <= len(bits)
             ):
                 break
+
+            print(field)
+            print(type(self._fields[field].typeval.binary))
+
             bits = bits[: field_val.first.value] + self._fields[field].typeval.binary
             field = self._next_field(field)
         if len(bits) % 8:
@@ -373,23 +390,22 @@ class Message(abstract_message.IMessage):
         :param msg_as_bytes: byte representation of the message
         """
 
-        msg_as_bitstr = TypeValue.convert_bytes_to_bitstring(msg_as_bytes)
+        msg_as_bitstr: Bitstring = Bitstring().from_bytes(msg_as_bytes)
         current_field_name = self._next_field(model.INITIAL.name)
         field_first_in_bitstr = 0
         field_length = 0
 
         while current_field_name != model.FINAL.name and (
             field_first_in_bitstr + field_length
-        ) <= len(msg_as_bitstr):
+        ) <= len(str(msg_as_bitstr)):
 
             current_field = self._fields[current_field_name]
             if isinstance(current_field.typeval, OpaqueValue) and not self._has_length(
                 current_field_name
             ):
+
                 self._fields[current_field_name].first = self._get_first(current_field_name)
-                self._fields[current_field_name].typeval.assign_bitvalue(
-                    msg_as_bitstr[field_first_in_bitstr:], True
-                )
+                self.set(current_field_name, msg_as_bitstr[field_first_in_bitstr:])
                 self._fields[current_field_name].length = Number(current_field.typeval.length)
             else:
                 assert isinstance(current_field.length, Number)
@@ -397,20 +413,18 @@ class Message(abstract_message.IMessage):
 
                 if field_length < 8:
 
-                    # field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
-
                     if original_length_in_bit != 0 and original_length_in_bit < 8:
                         field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
 
-                    self._fields[current_field_name].typeval.assign_bitvalue(
+                    self.set(
+                        current_field_name,
                         msg_as_bitstr[field_first_in_bitstr : field_first_in_bitstr + field_length],
-                        True,
                     )
                     field_first_in_bitstr = field_first_in_bitstr + field_length
 
                 elif field_length >= 9 and field_length % 8 != 0:
                     number_of_bytes = field_length // 8 + 1
-                    field_bits = ""
+                    field_bits = Bitstring()
 
                     for _ in itertools.repeat(None, number_of_bytes - 1):
                         field_bits += msg_as_bitstr[
@@ -423,8 +437,8 @@ class Message(abstract_message.IMessage):
                     field_bits += msg_as_bitstr[
                         field_first_in_bitstr + 8 - k : current_field.first.value + field_length
                     ]
+                    self.set(current_field_name, field_bits)
 
-                    self._fields[current_field_name].typeval.assign_bitvalue(field_bits, True)
                 else:
                     this_first = self._fields[current_field_name].first
                     prev_first = self._fields[self._prev_field(current_field_name)].first
@@ -434,9 +448,7 @@ class Message(abstract_message.IMessage):
                         s = prev_first.value
                     else:
                         s = this_first.value
-                    self._fields[current_field_name].typeval.assign_bitvalue(
-                        msg_as_bitstr[s : s + field_length], True
-                    )
+                    self.set(current_field_name, msg_as_bitstr[s : s + field_length])
                     field_first_in_bitstr = s + field_length
 
             self._preset_fields(current_field_name)
