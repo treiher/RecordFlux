@@ -774,6 +774,9 @@ class Message(AbstractMessage):
         if structure or types:
             self._prove()
 
+    def constraints(self, name: str, proof: bool = False) -> Expr:
+        pass
+
 
 class DerivedMessage(Message):
     def __init__(
@@ -812,6 +815,9 @@ class UnprovenMessage(AbstractMessage):
             structure if structure else copy(self.structure),
             types if types else copy(self.types),
         )
+
+    def constraints(self, name: str, proof: bool = False) -> Expr:
+        pass
 
 
 class UnprovenDerivedMessage(UnprovenMessage):
