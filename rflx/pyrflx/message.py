@@ -18,6 +18,7 @@ from rflx.expression import (
     Variable,
 )
 
+from . import abstract_message
 from .typevalue import ArrayValue, OpaqueValue, ScalarValue, TypeValue
 
 
@@ -54,7 +55,7 @@ class Field:
         return Sub(Add(self.first, self.length), Number(1)).simplified()
 
 
-class Message:
+class Message(abstract_message.IMessage):
     def __init__(self, message_model: model.Message, all_messages: [model.Message]) -> None:
         self._all_defined_messages = all_messages
         self._model = message_model
@@ -84,6 +85,9 @@ class Message:
         if isinstance(other, self.__class__):
             return self._fields == other._fields and self._model == other._model
         return NotImplemented
+
+    def check_model_equality(self, other: "Message") -> bool:
+        return self.name == other.name
 
     def _next_field(self, fld: str) -> str:
         if fld == model.FINAL.name:
@@ -364,7 +368,9 @@ class Message:
 
     def parse_from_bytes(self, msg_as_bytes: bytes, original_length_in_bit=0) -> None:
         """
-        :param original_length_in_bit: use this parameter, if complete length of the message is less than 1 Byte
+        :param original_length_in_bit: use this parameter, if complete length of the message
+        is less than 1 Byte
+        :param msg_as_bytes: byte representation of the message
         """
 
         msg_as_bitstr = TypeValue.convert_bytes_to_bitstring(msg_as_bytes)

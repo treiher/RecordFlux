@@ -28,6 +28,9 @@ class TypeValue(ABC):
             return self._value == other._value and self._type == other._type
         return NotImplemented
 
+    def check_type_equality(self, other):
+        return isinstance(self._type, type(other))
+
     @property
     def initialized(self) -> bool:
         return self._value is not None
@@ -306,13 +309,11 @@ class ArrayValue(TypeValue):
 
         # check if all elements are of the same class and messages are valid
         for v in value:
-            if self._is_message_array and not isinstance(v._model, type(self._element_list_type)):
+            if self._is_message_array and not v.check_model_equality(self._element_list_type):
                 raise ValueError("members of an array must not be of different classes")
             if self._is_message_array and not v.valid_message:
                 raise ValueError("cannot assign array of messages: messages must be valid")
-            if not self._is_message_array and not isinstance(
-                v._type, type(self._element_list_type)
-            ):
+            if not self._is_message_array and not v.check_type_equality(self._element_list_type):
                 raise ValueError("members of an array must not be of different classes")
 
         self._value = value
@@ -328,12 +329,14 @@ class ArrayValue(TypeValue):
             )
 
             while len(nested_messages_array_bytes) != 0:
+
                 array_nested_message = message.Message(self._element_list_type, self._all_messages)
                 try:
                     array_nested_message.parse_from_bytes(nested_messages_array_bytes)
                 except Exception as e:
                     raise ValueError(
-                        f"cannot parse nested messages in array of type {self._element_list_type_name}: {e}"
+                        f"cannot parse nested messages in array of type "
+                        f"{self._element_list_type_name}: {e}"
                     )
                 self._value.append(array_nested_message)
                 # shorten bytestring by len(bytes) of parsed message to parse next message
