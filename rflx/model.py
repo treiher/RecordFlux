@@ -293,8 +293,8 @@ class Link(NamedTuple):
 
 class AbstractMessage(Type):
     @property
-    def size(self) -> Expr:
-        msg_size: Expr = Number(0)
+    def size(self) -> Number:
+        msg_size = Number(0)
         for field in self.__fields:
             f = self.__types[field].size
             if isinstance(f, Number):
@@ -312,12 +312,6 @@ class AbstractMessage(Type):
     ) -> None:
 
         super().__init__(full_name)
-
-        """
-        if full_name.count(".") != 1:
-            raise ModelError(f'unexpected format of message name "{full_name}"')
-        self.full_name = full_name
-        """
 
         self.structure = structure
         self.__types = types
