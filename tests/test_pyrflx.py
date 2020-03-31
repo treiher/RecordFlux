@@ -25,11 +25,12 @@ from rflx.pyrflx import (
     PyRFLX,
     TypeValue,
 )
-
-
 # pylint: disable=too-many-public-methods
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-lines
+from rflx.pyrflx.bitstring import Bitstring
+
+
 class TestPyRFLX(unittest.TestCase):
     testdir: str
     specdir: str
@@ -502,7 +503,7 @@ class TestPyRFLX(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, r"Three is not a valid enum value"):
             enumvalue.assign("Three")
         with self.assertRaisesRegex(KeyError, r"Number 15 is not a valid enum value"):
-            enumvalue.assign_bitvalue("1111", True)
+            enumvalue.assign_bitvalue(Bitstring("1111"), True)
 
     def test_value_opaque(self) -> None:
         # pylint: disable=pointless-statement
@@ -516,7 +517,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(opaquevalue.value, b"\x01\x02")
         self.assertEqual(opaquevalue.length, 16)
         self.assertEqual(opaquevalue.binary, "0000000100000010")
-        opaquevalue.assign_bitvalue("1111", True)
+        opaquevalue.assign_bitvalue(Bitstring("1111"), True)
         self.assertEqual(opaquevalue._value, b"\x0f")
 
     def test_value_equal(self) -> None:
@@ -813,13 +814,7 @@ class TestPyRFLX(unittest.TestCase):
         pass
 
     def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-
-        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.frame.parse_from_bytes(msg_as_bytes)
-
-        # ToDo um diesen Test zu schreiben müsste eine contains methode hinzugefügt werden
+        pass
 
     def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
 
@@ -913,11 +908,34 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.ipv4.binary, msg_as_bytes)
         """
 
-    def test_generating_ipv4(self) -> None:
-        pass
-
     def test_parsing_ipv4_option(self) -> None:
         pass
+
+    def test_generating_ipv4(self) -> None:
+
+        data = (
+            b"\x00\x35\x00\x35\x00\x18\x01\x52\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.ipv4.set("Version", 4)
+        self.ipv4.set("IHL", 5)
+        self.ipv4.set("DSCP", 0)
+        self.ipv4.set("ECN", 0)
+        self.ipv4.set("Total_Length", 44)
+        self.ipv4.set("Identification", 1)
+        self.ipv4.set("Flag_R", "False")
+        self.ipv4.set("Flag_DF", "False")
+        self.ipv4.set("Flag_MF", "False")
+        self.ipv4.set("Fragment_Offset", 0)
+        self.ipv4.set("TTL", 64)
+        self.ipv4.set("Protocol", "PROTOCOL_UDP")
+        self.ipv4.set("Header_Checksum", int("7CBE", 16))
+        self.ipv4.set("Source", int("7f000001", 16))
+        self.ipv4.set("Destination", int("7f000001", 16))
+        self.ipv4.set("Payload", data)
+
+        self.assertTrue(self.ipv4.valid_message)
 
     def test_generating_ipv4_option(self) -> None:
 
