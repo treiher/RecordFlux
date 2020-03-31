@@ -20,11 +20,16 @@ class Bitstring:
     def __getitem__(self, key: Union[int, slice]) -> "Bitstring":
         return Bitstring(self._bits[key])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._bits
 
-    def __int__(self):
+    def __int__(self) -> int:
         return int(self._bits, 2)
+
+    def __bytes__(self) -> bytes:
+        return b"".join(
+            [int(self._bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(self._bits), 8)]
+        )
 
     def from_bytes(self, msg: bytes) -> "Bitstring":
         self._bits = format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")

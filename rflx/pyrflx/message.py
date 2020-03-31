@@ -158,12 +158,12 @@ class Message:
             if isinstance(value, Bitstring):
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
                     field.first = self._get_first(fld)
-                    field.typeval.assign_bitvalue(str(value), True)
+                    field.typeval.assign_bitvalue(value, True)
                     field.length = Number(field.typeval.length)
                 else:
                     field.first = self._get_first(fld)
                     field.length = self._get_length(fld)
-                    field.typeval.assign_bitvalue(str(value), True)
+                    field.typeval.assign_bitvalue(value, True)
             else:
 
                 # check if value is not a bitstring
@@ -257,9 +257,6 @@ class Message:
                 or not field_val.first.value <= len(bits)
             ):
                 break
-
-            print(field)
-            print(type(self._fields[field].typeval.binary))
 
             bits = bits[: field_val.first.value] + self._fields[field].typeval.binary
             field = self._next_field(field)

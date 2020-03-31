@@ -48,7 +48,7 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def assign_bitvalue(self, value: Any, check: bool) -> None:
+    def assign_bitvalue(self, value: Bitstring, check: bool) -> None:
         raise NotImplementedError
 
     @abstractproperty
@@ -227,16 +227,8 @@ class OpaqueValue(TypeValue):
     def assign(self, value: bytes, check: bool = True) -> None:
         self._value = value
 
-    def assign_bitvalue(self, value: str, check: bool = True) -> None:
-
-        while len(value) % 8 != 0:
-            value = "0" + value
-
-        bytestring = b"".join(
-            [int(value[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(value), 8)]
-        )
-
-        self._value = bytestring
+    def assign_bitvalue(self, value: Bitstring, check: bool = True) -> None:
+        self._value = bytes(value)
 
     @property
     def length(self) -> int:
@@ -278,7 +270,6 @@ class ArrayValue(TypeValue):
         # detect if Array of Messages
         for m in all_messages:
             if m.full_name == self._element_list_type_name:
-                print("debug: detected array of messages")
                 self._element_list_type = m
                 self._is_message_array = True
 
@@ -294,7 +285,6 @@ class ArrayValue(TypeValue):
                         v.full_name == self._element_list_type_name
                         or re.match(v.full_name, "__BUILTINS__.*") is not None
                     ):
-                        print("debug: detected array of typeValues")
                         self._element_list_type = v
                         self._is_message_array = False
 
@@ -311,8 +301,9 @@ class ArrayValue(TypeValue):
 
         self._value = value
 
-    def assign_bitvalue(self, value: str, check: bool) -> None:
+    def assign_bitvalue(self, value: Bitstring, check: bool) -> None:
 
+        value = str(value)
         self._value = []
         # parse array of nested messages
         if self._is_message_array:
@@ -348,7 +339,9 @@ class ArrayValue(TypeValue):
         # parse array of typevalues
         while len(value) != 0:
             array_elem_typevalue = TypeValue.construct(self._element_list_type, self._all_messages)
-            array_elem_typevalue.assign_bitvalue(value[: self._element_list_type.size.value], True)
+            array_elem_typevalue.assign_bitvalue(
+                Bitstring(value[: self._element_list_type.size.value]), True
+            )
             self._value.append(array_elem_typevalue)
             value = value[self._element_list_type.size.value :]
 
