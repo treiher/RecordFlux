@@ -154,7 +154,6 @@ class Message:
 
             field = self._fields[fld]
 
-            # if value is bitring
             if isinstance(value, Bitstring):
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
                     field.first = self._get_first(fld)
@@ -166,7 +165,6 @@ class Message:
                     field.typeval.assign_bitvalue(value, True)
             else:
 
-                # check if value is not a bitstring
                 if not isinstance(value, field.typeval.accepted_type):
                     raise TypeError(
                         f"cannot assign different types: {field.typeval.accepted_type.__name__}"
@@ -448,7 +446,5 @@ class Message:
                     self.set(current_field_name, msg_as_bitstr[s : s + field_length])
                     field_first_in_bitstr = s + field_length
 
-            self._preset_fields(current_field_name)
             current_field_name = self._next_field(current_field_name)
-            if current_field_name == "":
-                raise KeyError("cannot access next field")
+

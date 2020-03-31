@@ -13,7 +13,7 @@ from rflx.model import (
     Opaque,
     RangeInteger,
     Type,
-)
+    Array)
 from rflx.pyrflx import (
     EnumValue,
     Field,
@@ -29,6 +29,7 @@ from rflx.pyrflx import (
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-lines
 from rflx.pyrflx.bitstring import Bitstring
+from rflx.pyrflx.typevalue import ArrayValue
 
 
 class TestPyRFLX(unittest.TestCase):
@@ -1049,3 +1050,59 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertTrue(self.array_test_typeval.valid_message)
         self.assertEqual(self.array_test_typeval.binary, b"\x03\x05\x06\x07")
+
+    def test_arrayvalue(self):
+
+        type_array = ArrayValue(Array("Test.Array", model.ModularInteger("Test.Mod_Int", Number(256))), [])
+        type_array._is_message_array = False
+        type_array._element_list_type = IntegerValue
+
+        intval = IntegerValue(model.ModularInteger("Test.Int", Number(256)))
+        enumval = EnumValue(model.Enumeration("Test.Enum", {"something": 1, "other": 2}, 2, False))
+
+        with self.assertRaisesRegex(ValueError, "members of an array must not be of different classes"):
+            type_array.assign([enumval], True)
+
+        msg_array = ArrayValue(Array("Test.MsgArray", self.tlv._model), [self.tlv._model])
+
+        self.tlv.set("Tag", "Msg_Data")
+
+        with self.assertRaisesRegex(ValueError, "cannot assign array of messages: messages must be valid"):
+            msg_array.assign([self.tlv], True)
+
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv.set("Length", 4)
+        self.tlv.set("Value", b"\x00\x00\x00\x00")
+
+        self.frame.set("Source", 0)
+        self.frame.set("Destination", 0)
+        self.frame.set("Type_Length_TPID", 47)
+        self.frame.set("Type_Length", 1537)
+        self.frame.set("Payload", bytes(46))
+
+        with self.assertRaisesRegex(ValueError, "members of an array must not be of different classes"):
+            msg_array.assign([self.tlv, self.frame], True)
+
+        with self.assertRaisesRegex(ValueError, "cannot parse nested messages in array of type TLV.Message: 'Number 0 is not a valid enum value"):
+            msg_array.assign_bitvalue(Bitstring("0101111"), True)
+
+        with self.assertRaisesRegex(ValueError, "cannot append to array: message is invalid Message"):
+            msg_array.assign_bitvalue(Bitstring("01000000"), True)
+
+        self.assertEqual(msg_array.value, [])
+
+
+        intval.assign(5)
+        self.array_test_typeval.set("Length", 42)
+
+        with self.assertRaisesRegex(ValueError, "invalid data length: 336 != 8"):
+            self.array_test_typeval.set("Byte", [intval])
+
+    def test_bitstring(self):
+
+        with self.assertRaisesRegex(ValueError, "Bitstring does not consist of only 0 and 1"):
+            Bitstring("123")
+
+        self.assertEqual(Bitstring("01") + Bitstring("00"), Bitstring("0100"))
+
+
