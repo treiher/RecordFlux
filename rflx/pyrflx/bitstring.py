@@ -26,6 +26,9 @@ class Bitstring:
     def __int__(self) -> int:
         return int(self._bits, 2)
 
+    def __eq__(self, other: "Bitstring") -> bool:
+        return True if self._bits == other._bits else False
+
     def __bytes__(self) -> bytes:
         return b"".join(
             [int(self._bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(self._bits), 8)]
