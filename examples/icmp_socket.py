@@ -1,4 +1,4 @@
-from rflx.pyrflx import (Message, Package, PyRFLX)
+from rflx.pyrflx import (MessageValue, Package, PyRFLX)
 import socket
 
 
@@ -21,7 +21,7 @@ class ICMPSocket:
 
     def send_icmp_request(self) -> None:
 
-        icmp_request: Message = self.__create_msg()
+        icmp_request: MessageValue = self.__create_msg()
 
         icmp_socket = None
         try:
@@ -31,7 +31,7 @@ class ICMPSocket:
             exit(1)
 
         try:
-            icmp_socket.sendto(icmp_request.binary, ('localhost', 1))
+            icmp_socket.sendto(icmp_request.to_bytes, ('localhost', 1))
         except InterruptedError as e:
             icmp_socket.close()
             print("Error while sending icmp request" + e.strerror)
@@ -40,14 +40,14 @@ class ICMPSocket:
         echo = icmp_socket.recv(4096)
 
         print("Request sent: ")
-        print(icmp_request.binary.hex())
+        print(icmp_request.to_bytes.hex())
         print("Reply received: ")
         print(echo.hex())
 
         if echo[8:] == self.icmp_data:
             print("ICMP data is equal")
 
-    def __create_msg(self) -> Message:
+    def __create_msg(self) -> MessageValue:
 
         icmp = self.package_icmp["Echo_Message"]
         icmp.set("Tag", "Echo_Request")

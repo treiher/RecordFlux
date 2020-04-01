@@ -26,8 +26,10 @@ class Bitstring:
     def __int__(self) -> int:
         return int(self._bits, 2)
 
-    def __eq__(self, other: "Bitstring") -> bool:
-        return True if self._bits == other._bits else False
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Bitstring):
+            return NotImplemented
+        return self._bits == other._bits
 
     def __bytes__(self) -> bytes:
         return b"".join(

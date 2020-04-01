@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Dict, List
 
 from rflx.parser import Parser
+from rflx.pyrflx.typevalue import MessageValue
 
-from .message import Message
 from .package import Package
 
 
@@ -22,7 +22,7 @@ class PyRFLX:
             self.__packages[p] = Package(p)
             for m in [x for x in messages if x.package == p]:
                 try:
-                    temp = Message(m, messages)
+                    temp = MessageValue(m, messages)
                     self.__packages[p][m.name] = temp
                 except ValueError as e:
                     print(f"ignored message {m.name}: {e}")

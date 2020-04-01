@@ -293,7 +293,7 @@ class Link(NamedTuple):
 
 class AbstractMessage(Type):
     @property
-    def size(self) -> Number:
+    def size(self) -> Expr:
         msg_size = Number(0)
         for field in self.__fields:
             f = self.__types[field].size
