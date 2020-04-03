@@ -25,14 +25,13 @@ from rflx.pyrflx import (
     PyRFLX,
     TypeValue,
 )
-# pylint: disable=too-many-public-methods
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-lines
 from rflx.pyrflx.bitstring import Bitstring
 from rflx.pyrflx.typevalue import ArrayValue
 
 
 class TestPyRFLX(unittest.TestCase):
+    # pylint: disable=too-many-public-methods, too-many-instance-attributes, too-many-lines
+
     testdir: str
     specdir: str
     package_tlv_checksum: Package
@@ -66,7 +65,6 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/tlv.rflx",
             ]
         )
-        # einzelne Packages
         cls.package_tlv_checksum = pyrflx["TLV_Checksum"]
         cls.package_ethernet = pyrflx["Ethernet"]
         cls.package_tls_record = pyrflx["TLS_Record"]
@@ -80,7 +78,6 @@ class TestPyRFLX(unittest.TestCase):
         cls.package_tlv = pyrflx["TLV"]
 
     def setUp(self) -> None:
-        # Messages
         self.tlv_checksum = self.package_tlv_checksum["Message"]
         self.tlv = self.package_tlv["Message"]
         self.frame = self.package_ethernet["Frame"]
@@ -566,7 +563,7 @@ class TestPyRFLX(unittest.TestCase):
 
         t = TestType("Test.Type")
         with self.assertRaisesRegex(ValueError, "cannot construct unknown type: TestType"):
-            TypeValue.construct(t, [])
+            TypeValue.construct(t)
 
     def test_field_eq(self) -> None:
         f1 = MessageValue.Field(OpaqueValue(Opaque()))
@@ -811,23 +808,19 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.to_bytes, msg_as_bytes)
 
     def test_generating_ethernet_2_vlan_dynamic(self) -> None:
-        pass
-
-    # rflx-in_ethernet-test
+        raise NotImplementedError
 
     def test_parsing_ipv4_in_ethernet(self) -> None:
-        pass
+        raise NotImplementedError
 
     def test_generating_ipv4_in_ethernet(self) -> None:
-        pass
-
-    # reflx-in_ipv4_test
+        raise NotImplementedError
 
     def test_parsing_udp_in_ipv4(self) -> None:
-        pass
+        raise NotImplementedError
 
     def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-        pass
+        raise NotImplementedError
 
     def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
 
@@ -876,12 +869,8 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(parsed_frame, self.frame.to_bytes)
 
-    # rflx-in_tlv-tests
-
     def test_null_in_tlv(self) -> None:
-        pass
-
-    # rflx ipv4 tests
+        raise NotImplementedError
 
     def test_parsing_ipv4(self) -> None:
 
@@ -922,7 +911,7 @@ class TestPyRFLX(unittest.TestCase):
         """
 
     def test_parsing_ipv4_option(self) -> None:
-        pass
+        raise NotImplementedError
 
     def test_generating_ipv4(self) -> None:
 
@@ -959,8 +948,6 @@ class TestPyRFLX(unittest.TestCase):
         self.ipv4_option.set("Option_Data", b"\x2a")
 
         self.assertTrue(self.ipv4_option.valid_message)
-
-    # rflx tlv tests
 
     # works only with tlv not tlv_checksum
     def test_parsing_tlv_data(self) -> None:

@@ -294,15 +294,7 @@ class Link(NamedTuple):
 class AbstractMessage(Type):
     @property
     def size(self) -> Expr:
-        msg_size = Number(0)
-        for field in self.__fields:
-            f = self.__types[field].size
-            if isinstance(f, Number):
-                msg_size += self.__types[field].size
-            else:
-                return UNDEFINED
-
-        return msg_size
+        return UNDEFINED
 
     def constraints(self, name: str, proof: bool = False) -> Expr:
         raise NotImplementedError

@@ -22,8 +22,7 @@ class PyRFLX:
             self.__packages[p] = Package(p)
             for m in [x for x in messages if x.package == p]:
                 try:
-                    temp = MessageValue(m, messages)
-                    self.__packages[p][m.name] = temp
+                    self.__packages[p][m.name] = MessageValue(m, messages)
                 except ValueError as e:
                     print(f"ignored message {m.name}: {e}")
 

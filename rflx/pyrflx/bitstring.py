@@ -42,12 +42,7 @@ class Bitstring:
 
     @staticmethod
     def check_bitstring(bitstring: str) -> bool:
-
-        for bit in bitstring:
-            if bit not in ["0", "1"]:
-                return False
-
-        return True
+        return all((bit in ["0", "1"] for bit in bitstring))
 
     @staticmethod
     def convert_bytes_to_string(msg: bytes) -> str:

@@ -1,4 +1,3 @@
-import itertools
 import re
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, Dict, List, Mapping
@@ -56,7 +55,7 @@ class TypeValue(ABC):
         self._value = None
 
     @abstractmethod
-    def assign(self, value: Any, length: int = 0) -> None:
+    def assign(self, value: Any, length: int = 0, check: bool = True) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -81,7 +80,9 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @classmethod
-    def construct(cls, vtype: Type, all_messages: List[model.Message]) -> "TypeValue":
+    def construct(cls, vtype: Type, all_messages: List[model.Message] = None) -> "TypeValue":
+        if all_messages is None:
+            all_messages = []
         if isinstance(vtype, Integer):
             return IntegerValue(vtype)
         if isinstance(vtype, Enumeration):
@@ -136,7 +137,7 @@ class IntegerValue(ScalarValue):
         assert isinstance(last, Number)
         return last.value
 
-    def assign(self, value: int, length: int = 0) -> None:
+    def assign(self, value: int, length: int = 0, check: bool = True) -> None:
         if (
             self._type.constraints("__VALUE__", True).simplified(
                 {Variable("__VALUE__"): Number(value)}
@@ -180,7 +181,7 @@ class EnumValue(ScalarValue):
     def __init__(self, vtype: Enumeration) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: str, length: int = 0) -> None:
+    def assign(self, value: str, length: int = 0, check: bool = True) -> None:
         assert isinstance(self._type, Enumeration)
         if value not in self._type.literals:
             raise KeyError(f"{value} is not a valid enum value")
@@ -239,7 +240,7 @@ class OpaqueValue(TypeValue):
     def __init__(self, vtype: Opaque) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: bytes, length: int = 0) -> None:
+    def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
         self._value = value
 
     def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
@@ -307,7 +308,7 @@ class ArrayValue(TypeValue):
                         self._element_list_type = v
                         self._is_message_array = False
 
-    def assign(self, value: List[TypeValue], length: int = 0) -> None:
+    def assign(self, value: List[TypeValue], length: int = 0, check: bool = True) -> None:
 
         # check if all elements are of the same class and messages are valid
         for v in value:
@@ -365,7 +366,7 @@ class ArrayValue(TypeValue):
         # parse array of typevalues
         while len(value_str) != 0:
 
-            nested_value = TypeValue.construct(self._element_list_type, self._all_messages)
+            nested_value = TypeValue.construct(self._element_list_type)
             nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
             self._value.append(nested_value)
             value_str = value_str[type_size_int:]
@@ -502,11 +503,12 @@ class MessageValue(TypeValue):
     def literals(self) -> Mapping[Name, Expr]:
         return {}
 
-    def assign(self, value: bytes, length: int = 0) -> None:
+    def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
         """
         :param value: Bitstring representation of the message
         :param length: use length parameter if complete
         length of the message is less than 1 Byte
+        :param check:
         :return:
         """
 
@@ -555,7 +557,7 @@ class MessageValue(TypeValue):
                     number_of_bytes = field_length // 8 + 1
                     field_bits = Bitstring()
 
-                    for _ in itertools.repeat(None, number_of_bytes - 1):
+                    for _ in range(number_of_bytes - 1):
                         field_bits += value[field_first_in_bitstr : field_first_in_bitstr + 8]
                         field_first_in_bitstr += 8
 
