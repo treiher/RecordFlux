@@ -1,4 +1,4 @@
-package TEST is
+package Test_Odd_Length is
 
    type Tag is range 0..3 with Size => 2;
    type Length is mod 2**30;
@@ -10,4 +10,4 @@ package TEST is
          Length : Length;
       end message;
 
-end TEST;
+end Test_Odd_Length;

@@ -3,7 +3,7 @@ import unittest
 from tempfile import TemporaryDirectory
 
 from rflx import model
-from rflx.expression import UNDEFINED, Expr
+from rflx.expression import UNDEFINED
 from rflx.model import (
     FINAL,
     INITIAL,
@@ -65,15 +65,15 @@ class TestPyRFLX(unittest.TestCase):
                 f"{cls.specdir}/tlv.rflx",
             ]
         )
-        cls.package_tlv = pyrflx["TLV_With_Checksum"]
+        cls.package_tlv_checksum = pyrflx["TLV_With_Checksum"]
         cls.package_ethernet = pyrflx["Ethernet"]
         cls.package_tls_record = pyrflx["TLS_Record"]
         cls.package_tls_alert = pyrflx["TLS_Alert"]
         cls.package_icmp = pyrflx["ICMP"]
-        cls.package_test_odd_length = pyrflx["TEST"]
+        cls.package_test_odd_length = pyrflx["Test_Odd_Length"]
         cls.package_ipv4 = pyrflx["IPv4"]
-        cls.package_array_nested_msg = pyrflx["Test_Array_Message"]
-        cls.package_array_typevalue = pyrflx["Test_Array_TypeValue"]
+        cls.package_array_nested_msg = pyrflx["Array_Message"]
+        cls.package_array_typevalue = pyrflx["Array_Type"]
         cls.package_udp = pyrflx["UDP"]
         cls.package_tlv = pyrflx["TLV"]
 
@@ -87,7 +87,7 @@ class TestPyRFLX(unittest.TestCase):
         self.odd_length = self.package_test_odd_length["Test"]
         self.ipv4 = self.package_ipv4["Packet"]
         self.ipv4_option = self.package_ipv4["Option"]
-        self.array_test_nested_msg = self.package_array_nested_msg["Bars"]
+        self.array_test_nested_msg = self.package_array_nested_msg["Message"]
         self.array_test_typeval = self.package_array_typevalue["Foo"]
         self.udp = self.package_udp["Datagram"]
 
@@ -904,6 +904,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.ipv4.valid_message)
         self.assertEqual(self.ipv4.binary, msg_as_bytes)
         """
+        raise NotImplementedError
 
     def test_parsing_ipv4_option(self) -> None:
         raise NotImplementedError
@@ -944,7 +945,6 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertTrue(self.ipv4_option.valid_message)
 
-    # works only with tlv not tlv_checksum
     def test_parsing_tlv_data(self) -> None:
         test_bytes = b"\x40\x04\x00\x00\x00\x00"
         self.tlv.assign(test_bytes)
@@ -993,6 +993,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.tlv_checksum.valid_message)
         self.assertEqual(self.tlv_checksum.binary, expected)
         """
+        raise NotImplementedError
 
     def test_generating_tlv_error(self) -> None:
 
@@ -1017,16 +1018,16 @@ class TestPyRFLX(unittest.TestCase):
         foos = [array_message_one, array_message_two]
 
         self.array_test_nested_msg.set("Length", 2)
-        self.array_test_nested_msg.set("Bars", foos)
+        self.array_test_nested_msg.set("Bar", foos)
 
         self.assertTrue(self.array_test_nested_msg.valid_message)
         self.assertEqual(b"\x02\x05\x06", self.array_test_nested_msg.to_bytes)
 
     def test_array_typevalues(self) -> None:
 
-        a = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_One", Number(256)))
-        b = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_Two", Number(256)))
-        c = IntegerValue(model.ModularInteger("Test_Array_TypeValue.Byte_Three", Number(256)))
+        a = IntegerValue(model.ModularInteger("Array_Type.Byte_One", Number(256)))
+        b = IntegerValue(model.ModularInteger("Array_Type.Byte_Two", Number(256)))
+        c = IntegerValue(model.ModularInteger("Array_Type.Byte_Three", Number(256)))
         a.assign(5)
         b.assign(6)
         c.assign(7)

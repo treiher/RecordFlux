@@ -1,4 +1,3 @@
-import re
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, Dict, List, Mapping
 
@@ -280,43 +279,23 @@ class ArrayValue(TypeValue):
 
     _value: List[TypeValue]
     _element_list_type: Type
-    _element_list_type_name: str
     _is_message_array: bool
     _all_messages: List[model.Message]
 
     def __init__(self, vtype: Array, all_messages: List[model.Message]) -> None:
         super().__init__(vtype)
-        self._element_list_type_name = vtype.element_type.full_name
+        self._element_list_type = vtype.element_type
         self._all_messages = all_messages
-
-        # detect if Array of MessageValue (messages can be defined in other packages)
-        for m in all_messages:
-            if m.full_name == self._element_list_type_name:
-                self._element_list_type = m
-                self._is_message_array = True
-                return
-
-        # if not Array of MessageValues it must be an Array of other TypeValues
-        for m in all_messages:
-            # find packet
-            if m.package == vtype.element_type.package:
-                # iterate through types within packet
-                for v in m.types.values():
-                    if (
-                        v.full_name == self._element_list_type_name
-                        or re.match(v.full_name, "__BUILTINS__.*") is not None
-                    ):
-                        self._element_list_type = v
-                        self._is_message_array = False
+        self._is_message_array = isinstance(self._element_list_type, model.Message)
 
     def assign(self, value: List[TypeValue], length: int = 0, check: bool = True) -> None:
 
         # check if all elements are of the same class and messages are valid
         for v in value:
             if (
-                isinstance(v, MessageValue)
+                self._is_message_array
+                and isinstance(v, MessageValue)
                 and isinstance(self._element_list_type, model.Message)
-                and self._is_message_array
             ):
                 if not v.check_model_equality(self._element_list_type):
                     raise ValueError("members of an array must not be of different classes")
@@ -334,7 +313,6 @@ class ArrayValue(TypeValue):
 
         self._value = []
 
-        # parse array of nested messages
         if self._is_message_array:
 
             while len(str(value)) != 0:
@@ -347,7 +325,7 @@ class ArrayValue(TypeValue):
                 except Exception as e:
                     raise ValueError(
                         f"cannot parse nested messages in array of type "
-                        f"{self._element_list_type_name}: {e}"
+                        f"{self._element_list_type.full_name}: {e}"
                     )
                 if nested_message.valid_message:
                     self._value.append(nested_message)
@@ -359,20 +337,23 @@ class ArrayValue(TypeValue):
 
             return
 
-        value_str = str(value)
-        type_size = self._element_list_type.size
-        assert isinstance(type_size, Number)
-        type_size_int = type_size.value
+        if isinstance(self._element_list_type, model.Scalar):
 
-        # parse array of typevalues
-        while len(value_str) != 0:
+            value_str = str(value)
+            type_size = self._element_list_type.size
+            assert isinstance(type_size, Number)
+            type_size_int = type_size.value
 
-            nested_value = TypeValue.construct(self._element_list_type)
-            nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
-            self._value.append(nested_value)
-            value_str = value_str[type_size_int:]
+            while len(value_str) != 0:
+                nested_value = TypeValue.construct(self._element_list_type)
+                nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
+                self._value.append(nested_value)
+                value_str = value_str[type_size_int:]
 
-        return
+            return
+
+        if isinstance(self._element_list_type, model.Array):
+            raise NotImplementedError("Array of Arrays currently not supported")
 
     @property
     def length(self) -> int:
