@@ -29,7 +29,7 @@ class PyRFLX:
                     a: List[Message] = []
                     for message in model.messages:
                         a.append(message)
-                    self.__packages[p][m.name] = MessageValue(m, a)
+                    self.__packages[p][m.name] = MessageValue(m)
                 except ValueError as e:
                     log.warning("Ignoring message %s: %s", m.name, e)
 

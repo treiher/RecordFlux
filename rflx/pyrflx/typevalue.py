@@ -39,7 +39,7 @@ class TypeValue(ABC):
             return self._value == other._value and self._type == other._type
         return NotImplemented
 
-    def check_type_equality(self, other: Type) -> bool:
+    def equal_type(self, other: Type) -> bool:
         return isinstance(self._type, type(other))
 
     @property
@@ -79,9 +79,8 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @classmethod
-    def construct(cls, vtype: Type, all_messages: List[model.Message] = None) -> "TypeValue":
-        if all_messages is None:
-            all_messages = []
+    def construct(cls, vtype: Type) -> "TypeValue":
+
         if isinstance(vtype, Integer):
             return IntegerValue(vtype)
         if isinstance(vtype, Enumeration):
@@ -89,9 +88,9 @@ class TypeValue(ABC):
         if isinstance(vtype, Opaque):
             return OpaqueValue(vtype)
         if isinstance(vtype, Array):
-            return ArrayValue(vtype, all_messages)
+            return ArrayValue(vtype)
         if isinstance(vtype, model.Message):
-            return MessageValue(vtype, all_messages)
+            return MessageValue(vtype)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
 
@@ -139,7 +138,7 @@ class IntegerValue(ScalarValue):
 
     def assign(self, value: int, length: int = 0, check: bool = True) -> None:
         if (
-            self._type.constraints("__VALUE__", True).simplified(
+            self._type.constraints("__VALUE__", check).simplified(
                 {Variable("__VALUE__"): Number(value)}
             )
             != TRUE
@@ -183,12 +182,10 @@ class EnumValue(ScalarValue):
         super().__init__(vtype)
 
     def assign(self, value: str, length: int = 0, check: bool = True) -> None:
-        assert isinstance(self._type, Enumeration)
         if value not in self._type.literals:
             raise KeyError(f"{value} is not a valid enum value")
         assert (
-            isinstance(self._type, Enumeration)
-            and self._type.constraints("__VALUE__", True).simplified(
+            self._type.constraints("__VALUE__", check).simplified(
                 {
                     **{Variable(k): v for k, v in self._type.literals.items()},
                     **{Variable("__VALUE__"): self._type.literals[value]},
@@ -278,15 +275,11 @@ class OpaqueValue(TypeValue):
 class ArrayValue(TypeValue):
 
     _value: List[TypeValue]
-    _element_list_type: Type
-    _is_message_array: bool
-    _all_messages: List[model.Message]
 
-    def __init__(self, vtype: Array, all_messages: List[model.Message]) -> None:
+    def __init__(self, vtype: Array) -> None:
         super().__init__(vtype)
-        self._element_list_type = vtype.element_type
-        self._all_messages = all_messages
-        self._is_message_array = isinstance(self._element_list_type, model.Message)
+        self._element_type = vtype.element_type
+        self._is_message_array = isinstance(self._element_type, model.Message)
 
     def assign(self, value: List[TypeValue], length: int = 0, check: bool = True) -> None:
 
@@ -295,16 +288,14 @@ class ArrayValue(TypeValue):
             if (
                 self._is_message_array
                 and isinstance(v, MessageValue)
-                and isinstance(self._element_list_type, model.Message)
+                and isinstance(self._element_type, model.Message)
             ):
-                if not v.check_model_equality(self._element_list_type):
+                if not v.equal_model(self._element_type):
                     raise ValueError("members of an array must not be of different classes")
                 if not v.valid_message:
                     raise ValueError("cannot assign array of messages: messages must be valid")
             else:
-                if not self._is_message_array and not v.check_type_equality(
-                    self._element_list_type
-                ):
+                if not self._is_message_array and not v.equal_type(self._element_type):
                     raise ValueError("members of an array must not be of different classes")
 
         self._value = value
@@ -317,15 +308,14 @@ class ArrayValue(TypeValue):
 
             while len(str(value)) != 0:
 
-                assert isinstance(self._element_list_type, model.Message)
-                nested_message = TypeValue.construct(self._element_list_type, self._all_messages)
+                nested_message = TypeValue.construct(self._element_type)
                 assert isinstance(nested_message, MessageValue)
                 try:
                     nested_message.assign_bitvalue(value)
                 except Exception as e:
                     raise ValueError(
                         f"cannot parse nested messages in array of type "
-                        f"{self._element_list_type.full_name}: {e}"
+                        f"{self._element_type.full_name}: {e}"
                     )
                 if nested_message.valid_message:
                     self._value.append(nested_message)
@@ -334,26 +324,23 @@ class ArrayValue(TypeValue):
                         f"cannot append to array: message is invalid {nested_message.name}"
                     )
                 value = value[len(str(nested_message.to_bitstring)) :]
-
             return
 
-        if isinstance(self._element_list_type, model.Scalar):
+        if isinstance(self._element_type, model.Scalar):
 
             value_str = str(value)
-            type_size = self._element_list_type.size
+            type_size = self._element_type.size
             assert isinstance(type_size, Number)
             type_size_int = type_size.value
 
             while len(value_str) != 0:
-                nested_value = TypeValue.construct(self._element_list_type)
+                nested_value = TypeValue.construct(self._element_type)
                 nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
                 self._value.append(nested_value)
                 value_str = value_str[type_size_int:]
-
             return
 
-        if isinstance(self._element_list_type, model.Array):
-            raise NotImplementedError("Array of Arrays currently not supported")
+        raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
 
     @property
     def length(self) -> int:
@@ -381,12 +368,11 @@ class ArrayValue(TypeValue):
 
 
 class MessageValue(TypeValue):
-    def __init__(self, message_model: model.Message, all_messages: List[model.Message]) -> None:
+    def __init__(self, message_model: model.Message) -> None:
         super().__init__(message_model)
-        self._all_defined_messages = all_messages
         self._model = message_model
         self._fields: Dict[str, MessageValue.Field] = {
-            f.name: self.Field(TypeValue.construct(self._model.types[f], all_messages))
+            f.name: self.Field(TypeValue.construct(self._model.types[f]))
             for f in self._model.fields
         }
         self.__type_literals: Mapping[Name, Expr] = {}
@@ -401,7 +387,7 @@ class MessageValue(TypeValue):
         self._preset_fields(model.INITIAL.name)
 
     def __copy__(self) -> "MessageValue":
-        new = MessageValue(self._model, self._all_defined_messages)
+        new = MessageValue(self._model)
         return new
 
     def __repr__(self) -> str:
@@ -412,7 +398,7 @@ class MessageValue(TypeValue):
             return self._fields == other._fields and self._model == other._model
         return NotImplemented
 
-    def check_model_equality(self, other: model.Message) -> bool:
+    def equal_model(self, other: model.Message) -> bool:
         return self.name == other.name
 
     def _next_field(self, fld: str) -> str:

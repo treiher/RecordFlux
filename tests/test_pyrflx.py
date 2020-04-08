@@ -1044,10 +1044,10 @@ class TestPyRFLX(unittest.TestCase):
         # pylint: disable=protected-access
 
         type_array = ArrayValue(
-            Array("Test.Array", model.ModularInteger("Test.Mod_Int", Number(256))), []
+            Array("Test.Array", model.ModularInteger("Test.Mod_Int", Number(256)))
         )
         type_array._is_message_array = False
-        type_array._element_list_type = model.ModularInteger("Test.Mod_Int", Number(256))
+        type_array._element_type = model.ModularInteger("Test.Mod_Int", Number(256))
 
         intval = IntegerValue(model.ModularInteger("Test.Int", Number(256)))
         enumval = EnumValue(
@@ -1061,7 +1061,7 @@ class TestPyRFLX(unittest.TestCase):
         ):
             type_array.assign([enumval])
 
-        msg_array = ArrayValue(Array("Test.MsgArray", self.tlv._model), [self.tlv._model])
+        msg_array = ArrayValue(Array("Test.MsgArray", self.tlv._model))
 
         self.tlv.set("Tag", "Msg_Data")
 
@@ -1111,4 +1111,3 @@ class TestPyRFLX(unittest.TestCase):
             Bitstring("123")
 
         self.assertEqual(Bitstring("01") + Bitstring("00"), Bitstring("0100"))
-        self.assertEqual(Bitstring.convert_bytes_to_string(b"\x00"), "00000000")
