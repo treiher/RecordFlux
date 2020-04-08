@@ -2,11 +2,8 @@ from typing import Union
 
 
 class Bitstring:
-
-    _bits: str
-
     def __init__(self, bits: str = ""):
-        if not self.check_bitstring(bits):
+        if not self.valid_bitstring(bits):
             raise ValueError("Bitstring does not consist of only 0 and 1")
         self._bits = bits
 
@@ -36,14 +33,10 @@ class Bitstring:
             [int(self._bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(self._bits), 8)]
         )
 
-    def from_bytes(self, msg: bytes) -> "Bitstring":
-        self._bits = format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
-        return self
+    @classmethod
+    def from_bytes(cls, msg: bytes) -> "Bitstring":
+        return cls(format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b"))
 
     @staticmethod
-    def check_bitstring(bitstring: str) -> bool:
+    def valid_bitstring(bitstring: str) -> bool:
         return all((bit in ["0", "1"] for bit in bitstring))
-
-    @staticmethod
-    def convert_bytes_to_string(msg: bytes) -> str:
-        return format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b")
