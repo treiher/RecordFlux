@@ -254,11 +254,6 @@ class OpaqueValue(TypeValue):
         return self._value
 
     @property
-    def to_bytes(self) -> bytes:
-        self._raise_initialized()
-        return self._value
-
-    @property
     def to_bitstring(self) -> Bitstring:
         self._raise_initialized()
         return Bitstring(format(int.from_bytes(self._value, "big"), f"0{self.length}b"))
@@ -387,8 +382,7 @@ class MessageValue(TypeValue):
         self._preset_fields(model.INITIAL.name)
 
     def __copy__(self) -> "MessageValue":
-        new = MessageValue(self._model)
-        return new
+        return MessageValue(self._model)
 
     def __repr__(self) -> str:
         return generic_repr(self.__class__.__name__, self.__dict__)
@@ -462,10 +456,6 @@ class MessageValue(TypeValue):
     @property
     def accepted_type(self) -> type:
         return bytes
-
-    @property
-    def value(self) -> Any:
-        raise NotImplementedError
 
     @property
     def literals(self) -> Mapping[Name, Expr]:
@@ -666,7 +656,7 @@ class MessageValue(TypeValue):
         return Bitstring(bits)
 
     @property
-    def to_bytes(self) -> bytes:
+    def value(self) -> bytes:
         bits = str(self.to_bitstring)
         return b"".join(
             [int(bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(bits), 8)]
