@@ -1034,7 +1034,7 @@ class TestPyRFLX(unittest.TestCase):
         byte_array = [a, b, c]
 
         self.array_test_typeval.set("Length", 3)
-        self.array_test_typeval.set("Byte", byte_array)
+        self.array_test_typeval.set("Bytes", byte_array)
 
         self.assertTrue(self.array_test_typeval.valid_message)
         self.assertEqual(self.array_test_typeval.value, b"\x03\x05\x06\x07")
@@ -1102,7 +1102,7 @@ class TestPyRFLX(unittest.TestCase):
         self.array_test_typeval.set("Length", 42)
 
         with self.assertRaisesRegex(ValueError, "invalid data length: 336 != 8"):
-            self.array_test_typeval.set("Byte", [intval])
+            self.array_test_typeval.set("Bytes", [intval])
 
     def test_bitstring(self) -> None:
 

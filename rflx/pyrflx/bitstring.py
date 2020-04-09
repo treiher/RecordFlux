@@ -33,6 +33,9 @@ class Bitstring:
             [int(self._bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(self._bits), 8)]
         )
 
+    def __len__(self) -> int:
+        return len(self._bits)
+
     @classmethod
     def from_bytes(cls, msg: bytes) -> "Bitstring":
         return cls(format(int.from_bytes(msg, "big"), f"0{len(msg) * 8}b"))

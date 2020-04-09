@@ -81,13 +81,13 @@ class TypeValue(ABC):
     @classmethod
     def construct(cls, vtype: Type) -> "TypeValue":
 
-        if isinstance(vtype, Integer):
+        if isinstance(vtype, model.Integer):
             return IntegerValue(vtype)
-        if isinstance(vtype, Enumeration):
+        if isinstance(vtype, model.Enumeration):
             return EnumValue(vtype)
-        if isinstance(vtype, Opaque):
+        if isinstance(vtype, model.Opaque):
             return OpaqueValue(vtype)
-        if isinstance(vtype, Array):
+        if isinstance(vtype, model.Array):
             return ArrayValue(vtype)
         if isinstance(vtype, model.Message):
             return MessageValue(vtype)
@@ -280,18 +280,20 @@ class ArrayValue(TypeValue):
 
         # check if all elements are of the same class and messages are valid
         for v in value:
-            if (
-                self._is_message_array
-                and isinstance(v, MessageValue)
-                and isinstance(self._element_type, model.Message)
-            ):
+            if isinstance(v, MessageValue) and isinstance(self._element_type, model.Message):
                 if not v.equal_model(self._element_type):
                     raise ValueError("members of an array must not be of different classes")
                 if not v.valid_message:
                     raise ValueError("cannot assign array of messages: messages must be valid")
-            else:
-                if not self._is_message_array and not v.equal_type(self._element_type):
-                    raise ValueError("members of an array must not be of different classes")
+            elif self._is_message_array and not isinstance(v, MessageValue):
+                raise ValueError(
+                    "cannot assign other TypeValues except MessageValues "
+                    "to an array of MessageValues"
+                )
+            elif not self._is_message_array and isinstance(v, MessageValue):
+                raise ValueError("cannot assign MessageValues to an array of other TypeValues")
+            elif not self._is_message_array and not v.equal_type(self._element_type):
+                raise ValueError("members of an array must not be of different classes")
 
         self._value = value
 
@@ -301,7 +303,7 @@ class ArrayValue(TypeValue):
 
         if self._is_message_array:
 
-            while len(str(value)) != 0:
+            while len(value) != 0:
 
                 nested_message = TypeValue.construct(self._element_type)
                 assert isinstance(nested_message, MessageValue)
@@ -462,13 +464,6 @@ class MessageValue(TypeValue):
         return {}
 
     def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
-        """
-        :param value: Bitstring representation of the message
-        :param length: use length parameter if complete
-        length of the message is less than 1 Byte
-        :param check:
-        :return:
-        """
 
         msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
         self.assign_bitvalue(msg_as_bitstr, length)

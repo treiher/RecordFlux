@@ -5,7 +5,6 @@ from typing import Dict, List
 from rflx.parser import Parser
 from rflx.pyrflx.typevalue import MessageValue
 
-from ..model import Message
 from .package import Package
 
 log = logging.getLogger(__name__)
@@ -26,9 +25,6 @@ class PyRFLX:
             self.__packages[p] = Package(p)
             for m in [x for x in model.messages if x.package == p]:
                 try:
-                    a: List[Message] = []
-                    for message in model.messages:
-                        a.append(message)
                     self.__packages[p][m.name] = MessageValue(m)
                 except ValueError as e:
                     log.warning("Ignoring message %s: %s", m.name, e)

@@ -1,6 +1,6 @@
 package Test_Odd_Length is
 
-   type Tag is range 0..3 with Size => 2;
+   type Tag is range 0 .. 3 with Size => 2;
    type Length is mod 2**30;
 
    type Test is
