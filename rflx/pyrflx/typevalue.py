@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Tuple, Union
 
 from rflx import model
 from rflx.common import generic_repr
@@ -58,7 +58,7 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
         raise NotImplementedError
 
     @property
@@ -146,7 +146,7 @@ class IntegerValue(ScalarValue):
             raise ValueError(f"value {value} not in type range {self._first} .. {self._last}")
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
         self.assign(int(value))
 
     @property
@@ -195,7 +195,7 @@ class EnumValue(ScalarValue):
         )
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
 
         value_as_int: int = int(value)
         if not Number(value_as_int) in self.literals.values():
@@ -240,7 +240,7 @@ class OpaqueValue(TypeValue):
     def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
         self._value = bytes(value)
 
     @property
@@ -278,7 +278,6 @@ class ArrayValue(TypeValue):
 
     def assign(self, value: List[TypeValue], length: int = 0, check: bool = True) -> None:
 
-        # check if all elements are of the same class and messages are valid
         for v in value:
             if isinstance(v, MessageValue) and isinstance(self._element_type, model.Message):
                 if not v.equal_model(self._element_type):
@@ -297,7 +296,7 @@ class ArrayValue(TypeValue):
 
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
 
         self._value = []
 
@@ -321,9 +320,8 @@ class ArrayValue(TypeValue):
                         f"cannot append to array: message is invalid {nested_message.name}"
                     )
                 value = value[len(str(nested_message.to_bitstring)) :]
-            return
 
-        if isinstance(self._element_type, model.Scalar):
+        elif isinstance(self._element_type, model.Scalar):
 
             value_str = str(value)
             type_size = self._element_type.size
@@ -335,9 +333,8 @@ class ArrayValue(TypeValue):
                 nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
                 self._value.append(nested_value)
                 value_str = value_str[type_size_int:]
-            return
-
-        raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
+        else:
+            raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
 
     @property
     def length(self) -> int:
@@ -463,81 +460,110 @@ class MessageValue(TypeValue):
     def literals(self) -> Mapping[Name, Expr]:
         return {}
 
-    def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
+    def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
 
         msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
-        self.assign_bitvalue(msg_as_bitstr, length)
+        self.assign_bitvalue(msg_as_bitstr, offset)
 
-    def assign_bitvalue(self, value: Bitstring, length: int = 0) -> None:
-        """
-        :param value: Bitstring representation of the message
-        :param length: use length parameter if complete
-        length of the message is less than 1 Byte
-        """
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0):
 
         current_field_name = self._next_field(model.INITIAL.name)
-        field_first_in_bitstr = 0
-        field_length = 0
+        last_field_first_in_bitstr = current_field_first_in_bitstr = 0 + offset
+        current_field_length = 0
+
+        def get_current_pos_in_bitstr(field_name: str) -> int:
+
+            # if the node is a virtual node i.e. has the same first as the previous node
+            # set the current pos in bitstring back to the first position of its predecessor
+            this_first = self._fields[field_name].first
+            prev_first = self._fields[self._prev_field(field_name)].first
+            assert isinstance(prev_first, Number)
+            assert isinstance(this_first, Number)
+
+            return (
+                last_field_first_in_bitstr
+                if prev_first.value == this_first.value
+                else current_field_first_in_bitstr
+            )
+
+        def set_field_without_length(
+            field_name: str, field: MessageValue.Field
+        ) -> Tuple[int, int]:
+
+            last_pos_in_bitstr = current_pos_in_bitstring = current_field_first_in_bitstr
+            assert isinstance(field.typeval, OpaqueValue)
+            field.first = self._get_first(field_name)
+            self.set(field_name, value[current_pos_in_bitstring:])
+            field.length = Number(field.typeval.length)
+
+            return last_pos_in_bitstr, current_pos_in_bitstring
+
+        def set_field_with_length(field_name: str, field_length: int) -> Tuple[int, int]:
+
+            last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
+
+            if field_length <= 8:
+
+                self.set(
+                    field_name,
+                    value[current_pos_in_bitstring : current_pos_in_bitstring + field_length],
+                )
+                current_pos_in_bitstring += field_length
+
+            else:
+                bytes_used_for_field = field_length // 8 + 1
+                first_pos = current_pos_in_bitstring
+                field_bits = Bitstring()
+
+                for _ in range(bytes_used_for_field - 1):
+                    field_bits += value[current_pos_in_bitstring : current_pos_in_bitstring + 8]
+                    current_pos_in_bitstring += 8
+
+                k = field_length // bytes_used_for_field + 1
+                field_bits += value[current_pos_in_bitstring + 8 - k : first_pos + field_length]
+                current_pos_in_bitstring = first_pos + field_length
+                self.set(field_name, field_bits)
+
+            return last_pos_in_bitstr, current_pos_in_bitstring
 
         while current_field_name != model.FINAL.name and (
-            field_first_in_bitstr + field_length
-        ) <= len(str(value)):
+            current_field_first_in_bitstr + current_field_length
+        ) <= len(value):
 
             current_field = self._fields[current_field_name]
+
             if isinstance(current_field.typeval, OpaqueValue) and not self._has_length(
                 current_field_name
             ):
 
-                self._fields[current_field_name].first = self._get_first(current_field_name)
-                self.set(current_field_name, value[field_first_in_bitstr:])
-                self._fields[current_field_name].length = Number(current_field.typeval.length)
-            else:
+                (
+                    last_field_first_in_bitstr,
+                    current_field_first_in_bitstr,
+                ) = set_field_without_length(current_field_name, current_field)
+
+            elif self._has_length(current_field_name):
                 assert isinstance(current_field.length, Number)
-                field_length = current_field.length.value
-
-                if field_length < 8:
-
-                    if length != 0 and length < 8:
-                        field_first_in_bitstr = field_first_in_bitstr + 8 - field_length
-
-                    self.set(
-                        current_field_name,
-                        value[field_first_in_bitstr : field_first_in_bitstr + field_length],
+                current_field_length = current_field.length.value
+                try:
+                    (
+                        last_field_first_in_bitstr,
+                        current_field_first_in_bitstr,
+                    ) = set_field_with_length(current_field_name, current_field_length)
+                except IndexError:
+                    raise IndexError(
+                        f"Bitstring representing the message is too short - "
+                        f"stopped while parsing field: {current_field_name}"
                     )
-                    field_first_in_bitstr = field_first_in_bitstr + field_length
-
-                elif field_length >= 9 and field_length % 8 != 0:
-                    number_of_bytes = field_length // 8 + 1
-                    field_bits = Bitstring()
-
-                    for _ in range(number_of_bytes - 1):
-                        field_bits += value[field_first_in_bitstr : field_first_in_bitstr + 8]
-                        field_first_in_bitstr += 8
-
-                    assert isinstance(current_field.first, Number)
-                    k = field_length // number_of_bytes + 1
-                    field_bits += value[
-                        field_first_in_bitstr + 8 - k : current_field.first.value + field_length
-                    ]
-                    self.set(current_field_name, field_bits)
-
-                else:
-                    this_first = self._fields[current_field_name].first
-                    prev_first = self._fields[self._prev_field(current_field_name)].first
-                    assert isinstance(prev_first, Number)
-                    assert isinstance(this_first, Number)
-                    if prev_first.value == this_first.value:
-                        s = prev_first.value
-                    else:
-                        s = this_first.value
-                    self.set(current_field_name, value[s : s + field_length])
-                    field_first_in_bitstr = s + field_length
+            else:
+                if current_field_length == 0:
+                    raise ValueError("Field cannot have a length of zero")
+                if not self._has_length(current_field_name):
+                    raise ValueError("Field does not have a length and is not Opaque")
 
             current_field_name = self._next_field(current_field_name)
 
-    def set(self, fld: str, value: Any) -> None:
+    def set(self, fld: str, value: Union[bytes, int, str, List[TypeValue], Bitstring]) -> None:
 
-        # if node is in accessible fields its length and first are known
         if fld in self.accessible_fields:
 
             field = self._fields[fld]
@@ -559,7 +585,6 @@ class MessageValue(TypeValue):
                         f" != {type(value).__name__}"
                     )
 
-                # if field is of type opaque and does not have a specified length
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
                     assert isinstance(value, bytes)
                     field.first = self._get_first(fld)
@@ -596,11 +621,6 @@ class MessageValue(TypeValue):
         self._preset_fields(fld)
 
     def _preset_fields(self, fld: str) -> None:
-        """
-        Iterates through the following nodes of fld until reaches a node whose successor
-        does not have a first or length field. It sets the first and length fields of all
-        nodes it reaches.
-        """
 
         nxt = self._next_field(fld)
         while nxt and nxt != model.FINAL.name:
@@ -663,13 +683,6 @@ class MessageValue(TypeValue):
 
     @property
     def accessible_fields(self) -> List[str]:
-        """
-        Field is accessible if the condition(s) of the incoming edge from its predecessor
-        evaluates to true and if the field has a specified length and first. If it is an
-        opaque field (has no previously known length) evaluate its accessibility by
-        call to __check_nodes_opaque
-        :return: str List of all accessible fields
-        """
 
         nxt = self._next_field(model.INITIAL.name)
         fields: List[str] = []
@@ -686,21 +699,15 @@ class MessageValue(TypeValue):
             ):
                 break
 
-            fields.append(nxt)  # field is accessible
+            fields.append(nxt)
             nxt = self._next_field(nxt)
         return fields
 
     def _check_nodes_opaque(self, nxt: str) -> bool:
-        """
-        Evaluate the accessibility of an opaque field.
-        :param nxt: String name of field (node) to evaluate
-        :return: False if field is accessible
-        """
 
-        if self._get_length_unchecked(nxt) in [FALSE, UNDEFINED]:
+        if self._get_length_unchecked(nxt) == UNDEFINED:
             return True
 
-        # evaluate which of the incoming edges is valid (cond. evaluates to Expr. TRUE)
         for edge in self._model.incoming(model.Field(nxt)):
             if self.__simplified(edge.condition) == TRUE:
                 valid_edge = edge
@@ -708,15 +715,11 @@ class MessageValue(TypeValue):
         else:
             return False
 
-        # evaluate length of node
         for ve in valid_edge.length.variables():
-            # if the referenced node (which its length depends on) is a known node and is already
-            # set i.e. its length and first are already known, the field is accessible
             assert isinstance(ve.name, str)
             if ve.name in self._fields and not self._fields[ve.name].set:
                 return True
 
-            # if length depends on Message'Last -> set field accessible
             if isinstance(ve, Last) and ve.name == "Message":
                 return False
 

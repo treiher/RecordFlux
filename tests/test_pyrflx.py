@@ -627,7 +627,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_tlv_checksum_binary(self) -> None:
         test_bytes = b"\x01"
-        self.tlv_checksum.assign(test_bytes, 2)
+        self.tlv_checksum.assign(test_bytes, 6)
         self.assertFalse(self.tlv_checksum.valid_message)
 
     def test_odd_length_binary(self) -> None:
@@ -946,7 +946,13 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_parsing_tlv_data(self) -> None:
         test_bytes = b"\x40\x04\x00\x00\x00\x00"
+        print(Bitstring.from_bytes(test_bytes))
+
         self.tlv.assign(test_bytes)
+
+        print(self.tlv.value.hex())
+        print(test_bytes.hex())
+
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(test_bytes, self.tlv.value)
 
