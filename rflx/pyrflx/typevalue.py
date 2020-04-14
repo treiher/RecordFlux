@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
-from rflx import model
 from rflx.common import generic_repr
 from rflx.expression import (
     FALSE,
@@ -16,7 +15,19 @@ from rflx.expression import (
     Sub,
     Variable,
 )
-from rflx.model import Array, Enumeration, Integer, Number, Opaque, Scalar, Type
+from rflx.model import (
+    FINAL,
+    INITIAL,
+    Array,
+    Enumeration,
+    Field,
+    Integer,
+    Message,
+    Number,
+    Opaque,
+    Scalar,
+    Type,
+)
 from rflx.pyrflx.bitstring import Bitstring
 
 
@@ -86,15 +97,15 @@ class TypeValue(ABC):
     @classmethod
     def construct(cls, vtype: Type) -> "TypeValue":
 
-        if isinstance(vtype, model.Integer):
+        if isinstance(vtype, Integer):
             return IntegerValue(vtype)
-        if isinstance(vtype, model.Enumeration):
+        if isinstance(vtype, Enumeration):
             return EnumValue(vtype)
-        if isinstance(vtype, model.Opaque):
+        if isinstance(vtype, Opaque):
             return OpaqueValue(vtype)
-        if isinstance(vtype, model.Array):
+        if isinstance(vtype, Array):
             return ArrayValue(vtype)
-        if isinstance(vtype, model.Message):
+        if isinstance(vtype, Message):
             return MessageValue(vtype)
         raise ValueError("cannot construct unknown type: " + type(vtype).__name__)
 
@@ -279,25 +290,32 @@ class ArrayValue(TypeValue):
     def __init__(self, vtype: Array) -> None:
         super().__init__(vtype)
         self._element_type = vtype.element_type
-        self._is_message_array = isinstance(self._element_type, model.Message)
+        self._is_message_array = isinstance(self._element_type, Message)
 
     def assign(self, value: List[TypeValue], offset: int = 0, check: bool = True) -> None:
 
         for v in value:
-            if isinstance(v, MessageValue) and isinstance(self._element_type, model.Message):
-                if not v.equal_model(self._element_type):
-                    raise ValueError("members of an array must not be of different classes")
-                if not v.valid_message:
-                    raise ValueError("cannot assign array of messages: messages must be valid")
-            elif self._is_message_array and not isinstance(v, MessageValue):
-                raise ValueError(
-                    "cannot assign other TypeValues except MessageValues "
-                    "to an array of MessageValues"
-                )
-            elif not self._is_message_array and isinstance(v, MessageValue):
-                raise ValueError("cannot assign MessageValues to an array of other TypeValues")
-            elif not self._is_message_array and not v.equal_type(self._element_type):
-                raise ValueError("members of an array must not be of different classes")
+            if self._is_message_array:
+                if isinstance(v, MessageValue):
+                    assert isinstance(self._element_type, Message)
+                    if not v.equal_model(self._element_type):
+                        raise ValueError(
+                            f'cannot assign "{v.name}" to an array of "{self._element_type.name}"'
+                        )
+                    if not v.valid_message:
+                        raise ValueError(
+                            f'cannot assign message "{v.name}" to array of messages: '
+                            f"all messages must be valid"
+                        )
+                else:
+                    raise ValueError(
+                        f"cannot assign {type(v)} to an array of {type(self._element_type)}"
+                    )
+            else:
+                if isinstance(v, MessageValue) or not v.equal_type(self._element_type):
+                    raise ValueError(
+                        f"cannot assign {type(v)} to an array of {type(self._element_type)}"
+                    )
 
         self._value = value
 
@@ -326,7 +344,7 @@ class ArrayValue(TypeValue):
                     )
                 value = value[len(str(nested_message.to_bitstring)) :]
 
-        elif isinstance(self._element_type, model.Scalar):
+        elif isinstance(self._element_type, Scalar):
 
             value_str = str(value)
             type_size = self._element_type.size
@@ -367,7 +385,7 @@ class ArrayValue(TypeValue):
 
 
 class MessageValue(TypeValue):
-    def __init__(self, message_model: model.Message) -> None:
+    def __init__(self, message_model: Message) -> None:
         super().__init__(message_model)
         self._model = message_model
         self._fields: Dict[str, MessageValue.Field] = {
@@ -375,15 +393,15 @@ class MessageValue(TypeValue):
             for f in self._model.fields
         }
         self.__type_literals: Mapping[Name, Expr] = {}
-        self._last_field: str = self._next_field(model.INITIAL.name)
+        self._last_field: str = self._next_field(INITIAL.name)
 
         for t in [f.typeval.literals for f in self._fields.values()]:
             self.__type_literals = {**self.__type_literals, **t}
-        initial = self.Field(OpaqueValue(model.Opaque()))
+        initial = self.Field(OpaqueValue(Opaque()))
         initial.first = Number(0)
         initial.length = Number(0)
-        self._fields[model.INITIAL.name] = initial
-        self._preset_fields(model.INITIAL.name)
+        self._fields[INITIAL.name] = initial
+        self._preset_fields(INITIAL.name)
 
     def __copy__(self) -> "MessageValue":
         return MessageValue(self._model)
@@ -396,30 +414,30 @@ class MessageValue(TypeValue):
             return self._fields == other._fields and self._model == other._model
         return NotImplemented
 
-    def equal_model(self, other: model.Message) -> bool:
+    def equal_model(self, other: Message) -> bool:
         return self.name == other.name
 
     def _next_field(self, fld: str) -> str:
-        if fld == model.FINAL.name:
+        if fld == FINAL.name:
             return ""
-        if fld == model.INITIAL.name:
-            return self._model.outgoing(model.INITIAL)[0].target.name
+        if fld == INITIAL.name:
+            return self._model.outgoing(INITIAL)[0].target.name
 
-        for l in self._model.outgoing(model.Field(fld)):
+        for l in self._model.outgoing(Field(fld)):
             if self.__simplified(l.condition) == TRUE:
                 return l.target.name
         return ""
 
     def _prev_field(self, fld: str) -> str:
-        if fld == model.INITIAL.name:
+        if fld == INITIAL.name:
             return ""
-        for l in self._model.incoming(model.Field(fld)):
+        for l in self._model.incoming(Field(fld)):
             if self.__simplified(l.condition) == TRUE:
                 return l.source.name
         return ""
 
     def _get_length_unchecked(self, fld: str) -> Expr:
-        for l in self._model.incoming(model.Field(fld)):
+        for l in self._model.incoming(Field(fld)):
             if self.__simplified(l.condition) == TRUE and l.length != UNDEFINED:
                 return self.__simplified(l.length)
 
@@ -437,7 +455,7 @@ class MessageValue(TypeValue):
         return length
 
     def _get_first_unchecked(self, fld: str) -> Expr:
-        for l in self._model.incoming(model.Field(fld)):
+        for l in self._model.incoming(Field(fld)):
             if self.__simplified(l.condition) == TRUE and l.first != UNDEFINED:
                 return self.__simplified(l.first)
         prv = self._prev_field(fld)
@@ -476,18 +494,19 @@ class MessageValue(TypeValue):
 
     def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
 
-        current_field_name = self._next_field(model.INITIAL.name)
+        current_field_name = self._next_field(INITIAL.name)
         last_field_first_in_bitstr = current_field_first_in_bitstr = 0 + offset
         current_field_length = 0
 
         def get_current_pos_in_bitstr(field_name: str) -> int:
 
-            # if the node is a virtual node i.e. has the same first as the previous node
+            # if the previous node is a virtual node i.e. has the same first as the current node
             # set the current pos in bitstring back to the first position of its predecessor
             this_first = self._fields[field_name].first
             prev_first = self._fields[self._prev_field(field_name)].first
-            assert isinstance(prev_first, Number)
-            assert isinstance(this_first, Number)
+
+            if not isinstance(prev_first, Number) or not isinstance(this_first, Number):
+                return current_field_first_in_bitstr
 
             return (
                 last_field_first_in_bitstr
@@ -497,7 +516,7 @@ class MessageValue(TypeValue):
 
         def set_field_without_length(field_name: str, field: MessageValue.Field) -> Tuple[int, int]:
 
-            last_pos_in_bitstr = current_pos_in_bitstring = current_field_first_in_bitstr
+            last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
             assert isinstance(field.typeval, OpaqueValue)
             field.first = self._get_first(field_name)
             self.set(field_name, value[current_pos_in_bitstring:])
@@ -509,7 +528,7 @@ class MessageValue(TypeValue):
 
             last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
 
-            if field_length <= 8:
+            if field_length < 8 or field_length % 8 == 0:
 
                 self.set(
                     field_name,
@@ -533,7 +552,7 @@ class MessageValue(TypeValue):
 
             return last_pos_in_bitstr, current_pos_in_bitstring
 
-        while current_field_name != model.FINAL.name and (
+        while current_field_name != FINAL.name and (
             current_field_first_in_bitstr + current_field_length
         ) <= len(value):
 
@@ -601,14 +620,9 @@ class MessageValue(TypeValue):
         else:
             raise KeyError(f"cannot access field {fld}")
 
-        if all(
-            [
-                self.__simplified(o.condition) == FALSE
-                for o in self._model.outgoing(model.Field(fld))
-            ]
-        ):
+        if all([self.__simplified(o.condition) == FALSE for o in self._model.outgoing(Field(fld))]):
             self._fields[fld].typeval.clear()
-            print([o.condition for o in self._model.outgoing(model.Field(fld))])
+            print([o.condition for o in self._model.outgoing(Field(fld))])
             raise ValueError("value does not fulfill field condition")
 
         if isinstance(field.typeval, OpaqueValue) and field.typeval.size != field.length.value:
@@ -626,7 +640,7 @@ class MessageValue(TypeValue):
     def _preset_fields(self, fld: str) -> None:
 
         nxt = self._next_field(fld)
-        while nxt and nxt != model.FINAL.name:
+        while nxt and nxt != FINAL.name:
             field = self._fields[nxt]
 
             if not self._has_first(nxt) or not self._has_length(nxt):
@@ -655,10 +669,8 @@ class MessageValue(TypeValue):
     @property
     def to_bitstring(self) -> Bitstring:
         bits = ""
-        field = self._next_field(model.INITIAL.name)
-        while True:
-            if not field or field == model.FINAL.name:
-                break
+        field = self._next_field(INITIAL.name)
+        while field and not field == FINAL.name:
             field_val = self._fields[field]
             if (
                 not field_val.set
@@ -691,12 +703,12 @@ class MessageValue(TypeValue):
     @property
     def accessible_fields(self) -> List[str]:
 
-        nxt = self._next_field(model.INITIAL.name)
+        nxt = self._next_field(INITIAL.name)
         fields: List[str] = []
-        while nxt and nxt != model.FINAL.name:
+        while nxt and nxt != FINAL.name:
 
             if (
-                self.__simplified(self._model.field_condition(model.Field(nxt))) != TRUE
+                self.__simplified(self._model.field_condition(Field(nxt))) != TRUE
                 or not self._has_first(nxt)
                 or (
                     not self._has_length(nxt)
@@ -715,7 +727,7 @@ class MessageValue(TypeValue):
         if self._get_length_unchecked(nxt) == UNDEFINED:
             return True
 
-        for edge in self._model.incoming(model.Field(nxt)):
+        for edge in self._model.incoming(Field(nxt)):
             if self.__simplified(edge.condition) == TRUE:
                 valid_edge = edge
                 break
@@ -739,18 +751,12 @@ class MessageValue(TypeValue):
             for f in self.accessible_fields
             if (
                 self._fields[f].set
-                and self.__simplified(self._model.field_condition(model.Field(f))) == TRUE
+                and self.__simplified(self._model.field_condition(Field(f))) == TRUE
                 and any(
-                    [
-                        self.__simplified(i.condition) == TRUE
-                        for i in self._model.incoming(model.Field(f))
-                    ]
+                    [self.__simplified(i.condition) == TRUE for i in self._model.incoming(Field(f))]
                 )
                 and any(
-                    [
-                        self.__simplified(o.condition) == TRUE
-                        for o in self._model.outgoing(model.Field(f))
-                    ]
+                    [self.__simplified(o.condition) == TRUE for o in self._model.outgoing(Field(f))]
                 )
             )
         ]
@@ -763,9 +769,7 @@ class MessageValue(TypeValue):
 
     @property
     def valid_message(self) -> bool:
-        return (
-            bool(self.valid_fields) and self._next_field(self.valid_fields[-1]) == model.FINAL.name
-        )
+        return bool(self.valid_fields) and self._next_field(self.valid_fields[-1]) == FINAL.name
 
     def __simplified(self, expr: Expr) -> Expr:
         field_values: Mapping[Name, Expr] = {

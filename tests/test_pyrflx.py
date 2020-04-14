@@ -3,8 +3,18 @@ import unittest
 from tempfile import TemporaryDirectory
 from typing import List, Union
 
-from rflx import model
 from rflx.expression import UNDEFINED
+from rflx.model import (
+    FINAL,
+    INITIAL,
+    Array,
+    Enumeration,
+    ModularInteger,
+    Number,
+    Opaque,
+    RangeInteger,
+    Type,
+)
 from rflx.pyrflx import (
     ArrayValue,
     Bitstring,
@@ -260,15 +270,15 @@ class TestPyRFLX(unittest.TestCase):
     def test_tlv_next(self) -> None:
         # pylint: disable=protected-access
         self.tlv_checksum.set("Tag", "Msg_Data")
-        self.assertEqual(self.tlv_checksum._next_field(model.INITIAL.name), "Tag")
+        self.assertEqual(self.tlv_checksum._next_field(INITIAL.name), "Tag")
         self.assertEqual(self.tlv_checksum._next_field("Tag"), "Length")
-        self.assertEqual(self.tlv_checksum._next_field(model.FINAL.name), "")
+        self.assertEqual(self.tlv_checksum._next_field(FINAL.name), "")
 
     def test_tlv_prev(self) -> None:
         # pylint: disable=protected-access
         self.tlv_checksum.set("Tag", "Msg_Data")
-        self.assertEqual(self.tlv_checksum._prev_field("Tag"), model.INITIAL.name)
-        self.assertEqual(self.tlv_checksum._prev_field(model.INITIAL.name), "")
+        self.assertEqual(self.tlv_checksum._prev_field("Tag"), INITIAL.name)
+        self.assertEqual(self.tlv_checksum._prev_field(INITIAL.name), "")
         self.tlv_checksum.set("Tag", "Msg_Error")
         self.assertEqual(self.tlv_checksum._prev_field("Length"), "")
 
@@ -286,20 +296,20 @@ class TestPyRFLX(unittest.TestCase):
     def test_tlv_length_unchecked(self) -> None:
         # pylint: disable=protected-access
         self.tlv_checksum.set("Tag", "Msg_Error")
-        self.assertNotIsInstance(self.tlv_checksum._get_length_unchecked("Value"), model.Number)
+        self.assertNotIsInstance(self.tlv_checksum._get_length_unchecked("Value"), Number)
         self.tlv_checksum.set("Tag", "Msg_Data")
-        self.assertNotIsInstance(self.tlv_checksum._get_length_unchecked("Value"), model.Number)
+        self.assertNotIsInstance(self.tlv_checksum._get_length_unchecked("Value"), Number)
         self.tlv_checksum.set("Length", 1)
-        self.assertIsInstance(self.tlv_checksum._get_length_unchecked("Value"), model.Number)
+        self.assertIsInstance(self.tlv_checksum._get_length_unchecked("Value"), Number)
 
     def test_tlv_first_unchecked(self) -> None:
         # pylint: disable=protected-access
         self.tlv_checksum.set("Tag", "Msg_Error")
-        self.assertNotIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), model.Number)
+        self.assertNotIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), Number)
         self.tlv_checksum.set("Tag", "Msg_Data")
-        self.assertNotIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), model.Number)
+        self.assertNotIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), Number)
         self.tlv_checksum.set("Length", 1)
-        self.assertIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), model.Number)
+        self.assertIsInstance(self.tlv_checksum._get_first_unchecked("Checksum"), Number)
 
     def test_ethernet_all_fields(self) -> None:
         self.assertEqual(
@@ -420,7 +430,7 @@ class TestPyRFLX(unittest.TestCase):
         # pylint: disable=protected-access
         self.record.set("Tag", "APPLICATION_DATA")
         self.record.set("Legacy_Record_Version", "TLS_1_2")
-        self.assertNotIsInstance(self.record._get_length_unchecked("Fragment"), model.Number)
+        self.assertNotIsInstance(self.record._get_length_unchecked("Fragment"), Number)
 
     def test_icmp_echo_request(self) -> None:
         test_data = (
@@ -442,7 +452,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_value_mod(self) -> None:
         # pylint: disable=pointless-statement
-        modtype = model.ModularInteger("Test.Int", model.Number(2 ** 16))
+        modtype = ModularInteger("Test.Int", Number(2 ** 16))
         modvalue = IntegerValue(modtype)
         self.assertFalse(modvalue.initialized)
         with self.assertRaisesRegex(NotInitializedError, "value not initialized"):
@@ -460,9 +470,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_value_range(self) -> None:
         # pylint: disable=pointless-statement
-        rangetype = model.RangeInteger(
-            "Test.Int", model.Number(8), model.Number(16), model.Number(8)
-        )
+        rangetype = RangeInteger("Test.Int", Number(8), Number(16), Number(8))
         rangevalue = IntegerValue(rangetype)
         self.assertFalse(rangevalue.initialized)
         with self.assertRaisesRegex(NotInitializedError, "value not initialized"):
@@ -480,9 +488,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_value_enum(self) -> None:
         # pylint: disable=pointless-statement
-        enumtype = model.Enumeration(
-            "Test.Enum", {"One": model.Number(1), "Two": model.Number(2)}, model.Number(8), False
-        )
+        enumtype = Enumeration("Test.Enum", {"One": Number(1), "Two": Number(2)}, Number(8), False)
         enumvalue = EnumValue(enumtype)
         self.assertFalse(enumvalue.initialized)
         with self.assertRaisesRegex(NotInitializedError, "value not initialized"):
@@ -501,7 +507,7 @@ class TestPyRFLX(unittest.TestCase):
     def test_value_opaque(self) -> None:
         # pylint: disable=pointless-statement
         # pylint: disable=protected-access
-        opaquevalue = OpaqueValue(model.Opaque())
+        opaquevalue = OpaqueValue(Opaque())
         self.assertFalse(opaquevalue.initialized)
         with self.assertRaisesRegex(NotInitializedError, "value not initialized"):
             opaquevalue.value
@@ -514,16 +520,12 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(opaquevalue._value, b"\x0f")
 
     def test_value_equal(self) -> None:
-        ov = OpaqueValue(model.Opaque())
-        enumtype = model.Enumeration(
-            "Test.Enum", {"One": model.Number(1), "Two": model.Number(2)}, model.Number(8), False
-        )
+        ov = OpaqueValue(Opaque())
+        enumtype = Enumeration("Test.Enum", {"One": Number(1), "Two": Number(2)}, Number(8), False)
         ev = EnumValue(enumtype)
-        rangetype = model.RangeInteger(
-            "Test.Int", model.Number(8), model.Number(16), model.Number(8)
-        )
+        rangetype = RangeInteger("Test.Int", Number(8), Number(16), Number(8))
         rv = IntegerValue(rangetype)
-        modtype = model.ModularInteger("Test.Int", model.Number(2 ** 16))
+        modtype = ModularInteger("Test.Int", Number(2 ** 16))
         mv = IntegerValue(modtype)
         mv2 = IntegerValue(modtype)
         self.assertEqual(ov, ov)
@@ -542,7 +544,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertNotEqual(mv, rv)
 
     def test_value_clear(self) -> None:
-        ov = OpaqueValue(model.Opaque())
+        ov = OpaqueValue(Opaque())
         self.assertFalse(ov.initialized)
         ov.assign(b"")
         self.assertTrue(ov.initialized)
@@ -550,7 +552,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertFalse(ov.initialized)
 
     def test_value_invalid(self) -> None:
-        class TestType(model.Type):
+        class TestType(Type):
             pass
 
         t = TestType("Test.Type")
@@ -558,20 +560,20 @@ class TestPyRFLX(unittest.TestCase):
             TypeValue.construct(t)
 
     def test_field_eq(self) -> None:
-        f1 = MessageValue.Field(OpaqueValue(model.Opaque()))
-        self.assertEqual(f1, MessageValue.Field(OpaqueValue(model.Opaque())))
+        f1 = MessageValue.Field(OpaqueValue(Opaque()))
+        self.assertEqual(f1, MessageValue.Field(OpaqueValue(Opaque())))
         f1.typeval.assign(b"")
-        self.assertNotEqual(f1, MessageValue.Field(OpaqueValue(model.Opaque())))
+        self.assertNotEqual(f1, MessageValue.Field(OpaqueValue(Opaque())))
         self.assertNotEqual(f1, None)
 
     def test_field_set(self) -> None:
-        f = MessageValue.Field(OpaqueValue(model.Opaque()))
+        f = MessageValue.Field(OpaqueValue(Opaque()))
         self.assertFalse(f.set)
         f.typeval.assign(b"")
         self.assertFalse(f.set)
-        f.first = model.Number(1)
+        f.first = Number(1)
         self.assertFalse(f.set)
-        f.length = model.Number(2)
+        f.length = Number(2)
         self.assertTrue(f.set)
 
     def test_package_name(self) -> None:
@@ -644,7 +646,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(int("0", 16), self.frame.get("Source"))
         self.assertEqual(int("0800", 16), self.frame.get("Type_Length_TPID"))
         k = self.frame._fields["Payload"].length
-        assert isinstance(k, model.Number)
+        assert isinstance(k, Number)
         self.assertEqual(46, k.value // 8)
 
         self.assertTrue(self.frame.valid_message)
@@ -673,7 +675,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(int("1", 16), self.frame.get("TCI"))
 
         k = self.frame._fields["Payload"].length
-        assert isinstance(k, model.Number)
+        assert isinstance(k, Number)
         self.assertEqual(47, k.value // 8)
 
         self.assertTrue(self.frame.valid_message)
@@ -799,20 +801,22 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertEqual(self.frame.to_bytes, msg_as_bytes)
 
-    def test_generating_ethernet_2_vlan_dynamic(self) -> None:
-        raise NotImplementedError
+    # ISSUE: Componolit/RecordFlux#199
 
-    def test_parsing_ipv4_in_ethernet(self) -> None:
-        raise NotImplementedError
+    # def test_generating_ethernet_2_vlan_dynamic(self) -> None:
+    #    raise NotImplementedError
 
-    def test_generating_ipv4_in_ethernet(self) -> None:
-        raise NotImplementedError
+    # def test_parsing_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
 
-    def test_parsing_udp_in_ipv4(self) -> None:
-        raise NotImplementedError
+    # def test_generating_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
 
-    def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-        raise NotImplementedError
+    # def test_parsing_udp_in_ipv4(self) -> None:
+    #    raise NotImplementedError
+
+    # def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
 
     def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
 
@@ -861,9 +865,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(parsed_frame, self.frame.to_bytes)
 
-    def test_null_in_tlv(self) -> None:
-        raise NotImplementedError
-
     def test_parsing_ipv4(self) -> None:
 
         with open("tests/ipv4_udp.raw", "rb") as file:
@@ -886,25 +887,21 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.ipv4.get("Header_Checksum"), int("7CBE", 16))
         self.assertEqual(self.ipv4.get("Source"), int("7f000001", 16))
         self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
-        self.assertEqual(self.ipv4._fields["Payload"].length, model.Number(192))
+        self.assertEqual(self.ipv4._fields["Payload"].length, Number(192))
 
-    def test_parsing_ipv4_with_options(self) -> None:
-        """
-        with open("tests/ipv4-options_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
+    # ISSUE: Componolit/RecordFlux#199
 
-        self.ipv4.parse_from_bytes(msg_as_bytes)
+    # def test_parsing_ipv4_with_options(self) -> None:
+    # with open("tests/ipv4-options_udp.raw", "rb") as file:
+    #    msg_as_bytes: bytes = file.read()
+    # self.ipv4.parse_from_bytes(msg_as_bytes)
+    # for i in self.ipv4.get("Options"):
+    #    self.assertTrue(i.valid_message)
+    # self.assertTrue(self.ipv4.valid_message)
+    # self.assertEqual(self.ipv4.binary, msg_as_bytes)
 
-        for i in self.ipv4.get("Options"):
-            self.assertTrue(i.valid_message)
-
-        self.assertTrue(self.ipv4.valid_message)
-        self.assertEqual(self.ipv4.binary, msg_as_bytes)
-        """
-        raise NotImplementedError
-
-    def test_parsing_ipv4_option(self) -> None:
-        raise NotImplementedError
+    # def test_parsing_ipv4_option(self) -> None:
+    # raise NotImplementedError
 
     def test_generating_ipv4(self) -> None:
 
@@ -983,20 +980,16 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(self.tlv.to_bytes, expected)
 
-    def test_generating_tlv_data_zero(self) -> None:
-        """
-        expected = b"\x40\x00"
-        self.tlv_checksum.set("Tag", "Msg_Data")
-        self.tlv_checksum.set("Length", 0)
+    # def test_generating_tlv_data_zero(self) -> None:
+    # Message cannot become valid because length is 0 and thus
+    # value cannot be set
 
-        # Die Nachricht kann nicht valid werden, da Value nicht gesetzt werden
-        # kann, weil Length 0 ist
-        # self.tlv.set("Value", b"\x00\x00\x00\x00")
-
-        self.assertTrue(self.tlv_checksum.valid_message)
-        self.assertEqual(self.tlv_checksum.binary, expected)
-        """
-        raise NotImplementedError
+    # expected = b"\x40\x00"
+    # self.tlv_checksum.set("Tag", "Msg_Data")
+    # self.tlv_checksum.set("Length", 0)
+    # self.tlv.set("Value", b"\x00\x00\x00\x00")
+    # self.assertTrue(self.tlv_checksum.valid_message)
+    # self.assertEqual(self.tlv_checksum.binary, expected)
 
     def test_generating_tlv_error(self) -> None:
 
@@ -1028,9 +1021,9 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_array_typevalues(self) -> None:
 
-        a = IntegerValue(model.ModularInteger("Array_Type.Byte_One", model.Number(256)))
-        b = IntegerValue(model.ModularInteger("Array_Type.Byte_Two", model.Number(256)))
-        c = IntegerValue(model.ModularInteger("Array_Type.Byte_Three", model.Number(256)))
+        a = IntegerValue(ModularInteger("Array_Type.Byte_One", Number(256)))
+        b = IntegerValue(ModularInteger("Array_Type.Byte_Two", Number(256)))
+        c = IntegerValue(ModularInteger("Array_Type.Byte_Three", Number(256)))
         a.assign(5)
         b.assign(6)
         c.assign(7)
@@ -1046,33 +1039,31 @@ class TestPyRFLX(unittest.TestCase):
     def test_arrayvalue(self) -> None:
         # pylint: disable=protected-access
 
-        type_array = ArrayValue(
-            model.Array("Test.Array", model.ModularInteger("Test.Mod_Int", model.Number(256)))
-        )
+        type_array = ArrayValue(Array("Test.Array", ModularInteger("Test.Mod_Int", Number(256))))
         type_array._is_message_array = False
-        type_array._element_type = model.ModularInteger("Test.Mod_Int", model.Number(256))
+        type_array._element_type = ModularInteger("Test.Mod_Int", Number(256))
 
-        intval = IntegerValue(model.ModularInteger("Test.Int", model.Number(256)))
+        intval = IntegerValue(ModularInteger("Test.Int", Number(256)))
         enumval = EnumValue(
-            model.Enumeration(
-                "Test.Enum",
-                {"something": model.Number(1), "other": model.Number(2)},
-                model.Number(2),
-                False,
+            Enumeration(
+                "Test.Enum", {"something": Number(1), "other": Number(2)}, Number(2), False,
             )
         )
 
         with self.assertRaisesRegex(
-            ValueError, "members of an array must not be of different classes"
+            ValueError,
+            "cannot assign <class 'rflx.pyrflx.typevalue.EnumValue'> to an array of"
+            " <class 'rflx.model.ModularInteger'>",
         ):
             type_array.assign([enumval])
 
-        msg_array = ArrayValue(model.Array("Test.MsgArray", self.tlv._model))
+        msg_array = ArrayValue(Array("Test.MsgArray", self.tlv._model))
 
         self.tlv.set("Tag", "Msg_Data")
 
         with self.assertRaisesRegex(
-            ValueError, "cannot assign array of messages: messages must be valid"
+            ValueError,
+            'cannot assign message "Message" to array of messages: all messages must be valid',
         ):
             msg_array.assign([self.tlv])
 
@@ -1086,9 +1077,7 @@ class TestPyRFLX(unittest.TestCase):
         self.frame.set("Type_Length", 1537)
         self.frame.set("Payload", bytes(46))
 
-        with self.assertRaisesRegex(
-            ValueError, "members of an array must not be of different classes"
-        ):
+        with self.assertRaisesRegex(ValueError, 'cannot assign "Frame" to an array of "Message"'):
             msg_array.assign([self.tlv, self.frame])
 
         with self.assertRaisesRegex(
