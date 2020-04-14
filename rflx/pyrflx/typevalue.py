@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Any, Dict, List, Mapping, Tuple, Union
+from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
 from rflx import model
 from rflx.common import generic_repr
@@ -54,7 +54,7 @@ class TypeValue(ABC):
         self._value = None
 
     @abstractmethod
-    def assign(self, value: Any, length: int = 0, check: bool = True) -> None:
+    def assign(self, value: Any, offset: int = 0, check: bool = True) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -64,6 +64,11 @@ class TypeValue(ABC):
     @property
     @abstractmethod
     def to_bitstring(self) -> Bitstring:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def size(self) -> int:
         raise NotImplementedError
 
     @abstractproperty
@@ -136,7 +141,7 @@ class IntegerValue(ScalarValue):
         assert isinstance(last, Number)
         return last.value
 
-    def assign(self, value: int, length: int = 0, check: bool = True) -> None:
+    def assign(self, value: int, offset: int = 0, check: bool = True) -> None:
         if (
             self._type.constraints("__VALUE__", check).simplified(
                 {Variable("__VALUE__"): Number(value)}
@@ -181,7 +186,7 @@ class EnumValue(ScalarValue):
     def __init__(self, vtype: Enumeration) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: str, length: int = 0, check: bool = True) -> None:
+    def assign(self, value: str, offset: int = 0, check: bool = True) -> None:
         if value not in self._type.literals:
             raise KeyError(f"{value} is not a valid enum value")
         assert (
@@ -237,14 +242,14 @@ class OpaqueValue(TypeValue):
     def __init__(self, vtype: Opaque) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: bytes, length: int = 0, check: bool = True) -> None:
+    def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
         self._value = value
 
     def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
         self._value = bytes(value)
 
     @property
-    def length(self) -> int:
+    def size(self) -> int:
         self._raise_initialized()
         return len(self._value) * 8
 
@@ -256,7 +261,7 @@ class OpaqueValue(TypeValue):
     @property
     def to_bitstring(self) -> Bitstring:
         self._raise_initialized()
-        return Bitstring(format(int.from_bytes(self._value, "big"), f"0{self.length}b"))
+        return Bitstring(format(int.from_bytes(self._value, "big"), f"0{self.size}b"))
 
     @property
     def accepted_type(self) -> type:
@@ -276,7 +281,7 @@ class ArrayValue(TypeValue):
         self._element_type = vtype.element_type
         self._is_message_array = isinstance(self._element_type, model.Message)
 
-    def assign(self, value: List[TypeValue], length: int = 0, check: bool = True) -> None:
+    def assign(self, value: List[TypeValue], offset: int = 0, check: bool = True) -> None:
 
         for v in value:
             if isinstance(v, MessageValue) and isinstance(self._element_type, model.Message):
@@ -308,7 +313,7 @@ class ArrayValue(TypeValue):
                 assert isinstance(nested_message, MessageValue)
                 try:
                     nested_message.assign_bitvalue(value)
-                except Exception as e:
+                except (IndexError, ValueError, KeyError) as e:
                     raise ValueError(
                         f"cannot parse nested messages in array of type "
                         f"{self._element_type.full_name}: {e}"
@@ -337,9 +342,9 @@ class ArrayValue(TypeValue):
             raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
 
     @property
-    def length(self) -> int:
+    def size(self) -> int:
         self._raise_initialized()
-        return len(str(self.to_bitstring))
+        return len(self.to_bitstring)
 
     @property
     def value(self) -> List[TypeValue]:
@@ -460,12 +465,16 @@ class MessageValue(TypeValue):
     def literals(self) -> Mapping[Name, Expr]:
         return {}
 
+    @property
+    def size(self) -> int:
+        return len(self.to_bitstring)
+
     def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
 
         msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
         self.assign_bitvalue(msg_as_bitstr, offset)
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0):
+    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
 
         current_field_name = self._next_field(model.INITIAL.name)
         last_field_first_in_bitstr = current_field_first_in_bitstr = 0 + offset
@@ -486,15 +495,13 @@ class MessageValue(TypeValue):
                 else current_field_first_in_bitstr
             )
 
-        def set_field_without_length(
-            field_name: str, field: MessageValue.Field
-        ) -> Tuple[int, int]:
+        def set_field_without_length(field_name: str, field: MessageValue.Field) -> Tuple[int, int]:
 
             last_pos_in_bitstr = current_pos_in_bitstring = current_field_first_in_bitstr
             assert isinstance(field.typeval, OpaqueValue)
             field.first = self._get_first(field_name)
             self.set(field_name, value[current_pos_in_bitstring:])
-            field.length = Number(field.typeval.length)
+            field.length = Number(field.typeval.size)
 
             return last_pos_in_bitstr, current_pos_in_bitstring
 
@@ -562,38 +569,34 @@ class MessageValue(TypeValue):
 
             current_field_name = self._next_field(current_field_name)
 
-    def set(self, fld: str, value: Union[bytes, int, str, List[TypeValue], Bitstring]) -> None:
+    def set(self, fld: str, value: Union[bytes, int, str, Sequence[TypeValue], Bitstring]) -> None:
 
         if fld in self.accessible_fields:
 
             field = self._fields[fld]
 
             if isinstance(value, Bitstring):
+                field.first = self._get_first(fld)
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
-                    field.first = self._get_first(fld)
                     field.typeval.assign_bitvalue(value)
-                    field.length = Number(field.typeval.length)
+                    field.length = Number(field.typeval.size)
                 else:
-                    field.first = self._get_first(fld)
                     field.length = self._get_length(fld)
                     field.typeval.assign_bitvalue(value)
-            else:
-
-                if not isinstance(value, field.typeval.accepted_type):
-                    raise TypeError(
-                        f"cannot assign different types: {field.typeval.accepted_type.__name__}"
-                        f" != {type(value).__name__}"
-                    )
-
+            elif isinstance(value, field.typeval.accepted_type):
+                field.first = self._get_first(fld)
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
                     assert isinstance(value, bytes)
-                    field.first = self._get_first(fld)
                     field.typeval.assign(value)
-                    field.length = Number(field.typeval.length)
+                    field.length = Number(field.typeval.size)
                 else:
-                    field.first = self._get_first(fld)
                     field.length = self._get_length(fld)
                     field.typeval.assign(value)
+            else:
+                raise TypeError(
+                    f"cannot assign different types: {field.typeval.accepted_type.__name__}"
+                    f" != {type(value).__name__}"
+                )
 
         else:
             raise KeyError(f"cannot access field {fld}")
@@ -608,13 +611,13 @@ class MessageValue(TypeValue):
             print([o.condition for o in self._model.outgoing(model.Field(fld))])
             raise ValueError("value does not fulfill field condition")
 
-        if isinstance(field.typeval, OpaqueValue) and field.typeval.length != field.length.value:
-            flength = field.typeval.length
+        if isinstance(field.typeval, OpaqueValue) and field.typeval.size != field.length.value:
+            flength = field.typeval.size
             field.typeval.clear()
             raise ValueError(f"invalid data length: {field.length.value} != {flength}")
 
-        if isinstance(field.typeval, ArrayValue) and field.typeval.length != field.length.value:
-            flength = field.typeval.length
+        if isinstance(field.typeval, ArrayValue) and field.typeval.size != field.length.value:
+            flength = field.typeval.size
             field.typeval.clear()
             raise ValueError(f"invalid data length: {field.length.value} != {flength}")
 
@@ -634,7 +637,7 @@ class MessageValue(TypeValue):
             if (
                 field.set
                 and isinstance(field.typeval, OpaqueValue)
-                and field.typeval.length != field.length.value
+                and field.typeval.size != field.length.value
             ):
                 field.first = UNDEFINED
                 field.length = UNDEFINED
@@ -671,7 +674,11 @@ class MessageValue(TypeValue):
         return Bitstring(bits)
 
     @property
-    def value(self) -> bytes:
+    def value(self) -> Any:
+        raise NotImplementedError
+
+    @property
+    def to_bytes(self) -> bytes:
         bits = str(self.to_bitstring)
         return b"".join(
             [int(bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(bits), 8)]
@@ -694,7 +701,7 @@ class MessageValue(TypeValue):
                 or (
                     not self._has_length(nxt)
                     if not isinstance(self._fields[nxt].typeval, OpaqueValue)
-                    else self._check_nodes_opaque(nxt)
+                    else self._is_valid_opaque_node(nxt)
                 )
             ):
                 break
@@ -703,7 +710,7 @@ class MessageValue(TypeValue):
             nxt = self._next_field(nxt)
         return fields
 
-    def _check_nodes_opaque(self, nxt: str) -> bool:
+    def _is_valid_opaque_node(self, nxt: str) -> bool:
 
         if self._get_length_unchecked(nxt) == UNDEFINED:
             return True

@@ -31,7 +31,7 @@ class ICMPSocket:
             exit(1)
 
         try:
-            icmp_socket.sendto(icmp_request.value, ('localhost', 1))
+            icmp_socket.sendto(icmp_request.to_bytes, ('localhost', 1))
         except InterruptedError as e:
             icmp_socket.close()
             print("Error while sending icmp request" + e.strerror)
@@ -40,7 +40,7 @@ class ICMPSocket:
         echo = icmp_socket.recv(4096)
 
         print("Request sent: ")
-        print(icmp_request.value.hex())
+        print(icmp_request.to_bytes.hex())
         print("Reply received: ")
         print(echo.hex())
 
