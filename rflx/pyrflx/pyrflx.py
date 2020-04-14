@@ -20,12 +20,12 @@ class PyRFLX:
                 raise FileNotFoundError(f'file not found: "{f}"')
             parser.parse(Path(f))
         model = parser.create_model()
-        packages = set(m.package for m in model.messages)
+        packages = set(str(m.package) for m in model.messages)
         for p in packages:
             self.__packages[p] = Package(p)
-            for m in [x for x in model.messages if x.package == p]:
+            for m in [x for x in model.messages if str(x.package) == p]:
                 try:
-                    self.__packages[p][m.name] = Message(m)
+                    self.__packages[p][str(m.name)] = Message(m)
                 except ValueError as e:
                     log.warning("Ignoring message %s: %s", m.name, e)
 
