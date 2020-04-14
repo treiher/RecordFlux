@@ -74,7 +74,7 @@ class TypeValue(ABC):
 
     @property
     @abstractmethod
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         raise NotImplementedError
 
     @property
@@ -176,7 +176,7 @@ class IntegerValue(ScalarValue):
         return self._value
 
     @property
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         self._raise_initialized()
         return Bitstring(format(self._value, f"0{self.size}b"))
 
@@ -232,7 +232,7 @@ class EnumValue(ScalarValue):
         return Variable(self._value)
 
     @property
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         self._raise_initialized()
         assert isinstance(self._type, Enumeration)
         return Bitstring(format(self._type.literals[self._value].value, f"0{self.size}b"))
@@ -270,7 +270,7 @@ class OpaqueValue(TypeValue):
         return self._value
 
     @property
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         self._raise_initialized()
         return Bitstring(format(int.from_bytes(self._value, "big"), f"0{self.size}b"))
 
@@ -321,8 +321,6 @@ class ArrayValue(TypeValue):
 
     def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
 
-        self._value = []
-
         if self._is_message_array:
 
             while len(value) != 0:
@@ -342,7 +340,7 @@ class ArrayValue(TypeValue):
                     raise ValueError(
                         f"cannot append to array: message is invalid {nested_message.name}"
                     )
-                value = value[len(str(nested_message.to_bitstring)) :]
+                value = value[len(nested_message.bitstring) :]
 
         elif isinstance(self._element_type, Scalar):
 
@@ -362,7 +360,7 @@ class ArrayValue(TypeValue):
     @property
     def size(self) -> int:
         self._raise_initialized()
-        return len(self.to_bitstring)
+        return len(self.bitstring)
 
     @property
     def value(self) -> List[TypeValue]:
@@ -370,14 +368,14 @@ class ArrayValue(TypeValue):
         return self._value
 
     @property
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         self._raise_initialized()
-        bits: List[str] = [str(element.to_bitstring) for element in self._value]
+        bits: List[str] = [str(element.bitstring) for element in self._value]
         return Bitstring(str.join("", bits))
 
     @property
     def accepted_type(self) -> type:
-        return type([])
+        return list
 
     @property
     def literals(self) -> Mapping[Name, Expr]:
@@ -485,7 +483,7 @@ class MessageValue(TypeValue):
 
     @property
     def size(self) -> int:
-        return len(self.to_bitstring)
+        return len(self.bitstring)
 
     def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
 
@@ -667,7 +665,7 @@ class MessageValue(TypeValue):
         return self._fields[fld].typeval.value
 
     @property
-    def to_bitstring(self) -> Bitstring:
+    def bitstring(self) -> Bitstring:
         bits = ""
         field = self._next_field(INITIAL.name)
         while field and not field == FINAL.name:
@@ -678,7 +676,7 @@ class MessageValue(TypeValue):
                 or not field_val.first.value <= len(bits)
             ):
                 break
-            bits = bits[: field_val.first.value] + str(self._fields[field].typeval.to_bitstring)
+            bits = bits[: field_val.first.value] + str(self._fields[field].typeval.bitstring)
             field = self._next_field(field)
         if len(bits) % 8:
             raise ValueError(f"message length must be dividable by 8 ({len(bits)})")
@@ -690,8 +688,8 @@ class MessageValue(TypeValue):
         raise NotImplementedError
 
     @property
-    def to_bytes(self) -> bytes:
-        bits = str(self.to_bitstring)
+    def bytestring(self) -> bytes:
+        bits = str(self.bitstring)
         return b"".join(
             [int(bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(bits), 8)]
         )

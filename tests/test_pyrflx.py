@@ -212,7 +212,7 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv_checksum.set("Length", 8)
         self.tlv_checksum.set("Value", test_payload)
         self.tlv_checksum.set("Checksum", 0xFFFFFFFF)
-        self.assertEqual(self.tlv_checksum.to_bytes, test_data)
+        self.assertEqual(self.tlv_checksum.bytestring, test_data)
 
     def test_tlv_change_field(self) -> None:
         self.tlv_checksum.set("Tag", "Msg_Data")
@@ -231,9 +231,9 @@ class TestPyRFLX(unittest.TestCase):
         # pylint: disable=pointless-statement
         self.tlv_checksum.set("Tag", "Msg_Data")
         with self.assertRaisesRegex(ValueError, r"message length must be dividable by 8 \(2\)"):
-            self.tlv_checksum.to_bytes
+            self.tlv_checksum.bytestring
         self.tlv_checksum.set("Length", 8)
-        self.assertEqual(self.tlv_checksum.to_bytes, b"\x40\x08")
+        self.assertEqual(self.tlv_checksum.bytestring, b"\x40\x08")
 
     def test_tlv_value(self) -> None:
         v1 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
@@ -383,7 +383,7 @@ class TestPyRFLX(unittest.TestCase):
         )
         self.assertTrue(self.frame.valid_message)
         with open(f"{self.testdir}/ethernet_802.3.raw", "rb") as raw:
-            self.assertEqual(self.frame.to_bytes, raw.read())
+            self.assertEqual(self.frame.bytestring, raw.read())
 
     def test_ethernet_payload(self) -> None:
         self.frame.set("Source", 0)
@@ -447,7 +447,7 @@ class TestPyRFLX(unittest.TestCase):
         self.icmp.set(
             "Data", test_data,
         )
-        self.assertEqual(self.icmp.to_bytes, b"\x08\x00\x32\x18\x00\x05\x00\x01" + test_data)
+        self.assertEqual(self.icmp.bytestring, b"\x08\x00\x32\x18\x00\x05\x00\x01" + test_data)
         self.assertTrue(self.icmp.valid_message)
 
     def test_value_mod(self) -> None:
@@ -462,7 +462,7 @@ class TestPyRFLX(unittest.TestCase):
         modvalue.assign(128)
         self.assertTrue(modvalue.initialized)
         self.assertEqual(modvalue.value, 128)
-        self.assertEqual(str(modvalue.to_bitstring), "0000000010000000")
+        self.assertEqual(str(modvalue.bitstring), "0000000010000000")
         with self.assertRaisesRegex(ValueError, r"value 65536 not in type range 0 .. 65535"):
             modvalue.assign(2 ** 16)
         with self.assertRaisesRegex(ValueError, r"value -1 not in type range 0 .. 65535"):
@@ -480,7 +480,7 @@ class TestPyRFLX(unittest.TestCase):
         rangevalue.assign(10)
         self.assertTrue(rangevalue.initialized)
         self.assertEqual(rangevalue.value, 10)
-        self.assertEqual(str(rangevalue.to_bitstring), "00001010")
+        self.assertEqual(str(rangevalue.bitstring), "00001010")
         with self.assertRaisesRegex(ValueError, r"value 17 not in type range 8 .. 16"):
             rangevalue.assign(17)
         with self.assertRaisesRegex(ValueError, r"value 7 not in type range 8 .. 16"):
@@ -498,7 +498,7 @@ class TestPyRFLX(unittest.TestCase):
         enumvalue.assign("One")
         self.assertTrue(enumvalue.initialized)
         self.assertEqual(enumvalue.value, "One")
-        self.assertEqual(str(enumvalue.to_bitstring), "00000001")
+        self.assertEqual(str(enumvalue.bitstring), "00000001")
         with self.assertRaisesRegex(KeyError, r"Three is not a valid enum value"):
             enumvalue.assign("Three")
         with self.assertRaisesRegex(KeyError, r"Number 15 is not a valid enum value"):
@@ -515,7 +515,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(opaquevalue.initialized)
         self.assertEqual(opaquevalue.value, b"\x01\x02")
         self.assertEqual(opaquevalue.size, 16)
-        self.assertEqual(str(opaquevalue.to_bitstring), "0000000100000010")
+        self.assertEqual(str(opaquevalue.bitstring), "0000000100000010")
         opaquevalue.assign_bitvalue(Bitstring("1111"))
         self.assertEqual(opaquevalue._value, b"\x0f")
 
@@ -609,7 +609,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.icmp.assign(test_bytes)
         self.assertTrue(self.icmp.valid_message)
-        self.assertEqual(self.icmp.to_bytes, test_bytes)
+        self.assertEqual(self.icmp.bytestring, test_bytes)
 
     def test_ethernet_parse_binary(self) -> None:
         test_bytes = (
@@ -623,7 +623,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.frame.assign(test_bytes)
         self.assertTrue(self.frame.valid_message)
-        self.assertEqual(self.frame.to_bytes, test_bytes)
+        self.assertEqual(self.frame.bytestring, test_bytes)
 
     def test_tlv_checksum_binary(self) -> None:
         test_bytes = b"\x01"
@@ -650,7 +650,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(46, k.value // 8)
 
         self.assertTrue(self.frame.valid_message)
-        self.assertEqual(msg_as_bytes, self.frame.to_bytes)
+        self.assertEqual(msg_as_bytes, self.frame.bytestring)
 
     def test_parsing_ieee_802_3(self) -> None:
 
@@ -659,7 +659,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.frame.assign(msg_as_bytes)
         self.assertTrue(self.frame.valid_message)
-        self.assertEqual(self.frame.to_bytes, msg_as_bytes)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_parsing_ethernet_2_vlan(self) -> None:
 
@@ -679,7 +679,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(47, k.value // 8)
 
         self.assertTrue(self.frame.valid_message)
-        self.assertEqual(self.frame.to_bytes, msg_as_bytes)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
         with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
@@ -750,7 +750,7 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.assertEqual(self.frame.to_bytes, msg_as_bytes)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_generating_ieee_802_3(self) -> None:
 
@@ -772,7 +772,7 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ethernet_802.3.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.assertEqual(self.frame.to_bytes, msg_as_bytes)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_generating_ethernet_2_vlan(self) -> None:
 
@@ -796,10 +796,10 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ethernet_vlan_tag.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        print(self.frame.to_bytes.hex())
+        print(self.frame.bytestring.hex())
         print(msg_as_bytes.hex())
 
-        self.assertEqual(self.frame.to_bytes, msg_as_bytes)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     # ISSUE: Componolit/RecordFlux#199
 
@@ -825,7 +825,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.frame.assign(msg_as_bytes)
 
-        parsed_frame = self.frame.to_bytes
+        parsed_frame = self.frame.bytestring
 
         b = b""
         for _ in itertools.repeat(None, 18):
@@ -836,7 +836,7 @@ class TestPyRFLX(unittest.TestCase):
         self.udp.set("Length", 26)
         self.udp.set("Checksum", int("014E", 16))
         self.udp.set("Payload", b)
-        udp_binary = self.udp.to_bytes
+        udp_binary = self.udp.bytestring
 
         self.ipv4.set("Version", 4)
         self.ipv4.set("IHL", 5)
@@ -854,7 +854,7 @@ class TestPyRFLX(unittest.TestCase):
         self.ipv4.set("Source", int("7f000001", 16))
         self.ipv4.set("Destination", int("7f000001", 16))
         self.ipv4.set("Payload", udp_binary)
-        ip_binary = self.ipv4.to_bytes
+        ip_binary = self.ipv4.bytestring
 
         self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
         self.frame.set("Source", int("0", 16))
@@ -863,7 +863,7 @@ class TestPyRFLX(unittest.TestCase):
         self.frame.set("Payload", ip_binary)
 
         self.assertTrue(self.frame.valid_message)
-        self.assertEqual(parsed_frame, self.frame.to_bytes)
+        self.assertEqual(parsed_frame, self.frame.bytestring)
 
     def test_parsing_ipv4(self) -> None:
 
@@ -945,11 +945,11 @@ class TestPyRFLX(unittest.TestCase):
 
         self.tlv.assign(test_bytes)
 
-        print(self.tlv.to_bytes.hex())
+        print(self.tlv.bytestring.hex())
         print(test_bytes.hex())
 
         self.assertTrue(self.tlv.valid_message)
-        self.assertEqual(test_bytes, self.tlv.to_bytes)
+        self.assertEqual(test_bytes, self.tlv.bytestring)
 
     def test_parsing_tlv_data_zero(self) -> None:
         test_bytes = b"\x40\x00"
@@ -978,7 +978,7 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv.set("Value", b"\x00\x00\x00\x00")
 
         self.assertTrue(self.tlv.valid_message)
-        self.assertEqual(self.tlv.to_bytes, expected)
+        self.assertEqual(self.tlv.bytestring, expected)
 
     # def test_generating_tlv_data_zero(self) -> None:
     # Message cannot become valid because length is 0 and thus
@@ -999,9 +999,9 @@ class TestPyRFLX(unittest.TestCase):
     def test_array_parse_form_bytes(self) -> None:
 
         self.array_test_nested_msg.assign(b"\x02\x05\x06")
-        self.assertEqual(self.array_test_nested_msg.to_bytes, b"\x02\x05\x06")
+        self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
         self.array_test_typeval.assign(b"\x03\x05\x06\x07")
-        self.assertEqual(self.array_test_typeval.to_bytes, b"\x03\x05\x06\x07")
+        self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
 
     def test_array_nested_messages(self) -> None:
 
@@ -1017,7 +1017,7 @@ class TestPyRFLX(unittest.TestCase):
         self.array_test_nested_msg.set("Bar", foos)
 
         self.assertTrue(self.array_test_nested_msg.valid_message)
-        self.assertEqual(b"\x02\x05\x06", self.array_test_nested_msg.to_bytes)
+        self.assertEqual(b"\x02\x05\x06", self.array_test_nested_msg.bytestring)
 
     def test_array_typevalues(self) -> None:
 
@@ -1034,7 +1034,7 @@ class TestPyRFLX(unittest.TestCase):
         self.array_test_typeval.set("Bytes", byte_array)
 
         self.assertTrue(self.array_test_typeval.valid_message)
-        self.assertEqual(self.array_test_typeval.to_bytes, b"\x03\x05\x06\x07")
+        self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
 
     def test_arrayvalue(self) -> None:
         # pylint: disable=protected-access
