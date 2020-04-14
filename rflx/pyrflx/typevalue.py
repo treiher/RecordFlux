@@ -291,6 +291,7 @@ class ArrayValue(TypeValue):
         super().__init__(vtype)
         self._element_type = vtype.element_type
         self._is_message_array = isinstance(self._element_type, Message)
+        self._value = []
 
     def assign(self, value: List[TypeValue], offset: int = 0, check: bool = True) -> None:
 
