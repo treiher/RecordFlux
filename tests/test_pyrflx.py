@@ -589,14 +589,14 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_check_nodes_opaque(self) -> None:
         # pylint: disable=protected-access
-        self.assertFalse(self.tlv_checksum._is_valid_opaque_node("Length"))
-        self.assertTrue(self.tlv_checksum._is_valid_opaque_node("Value"))
+        self.assertTrue(self.tlv_checksum._is_valid_opaque_field("Length"))
+        self.assertFalse(self.tlv_checksum._is_valid_opaque_field("Value"))
 
         self.frame.set("Destination", 2 ** 48 - 1)
         self.frame.set("Source", 0)
         self.frame.set("Type_Length_TPID", 1501)
 
-        self.assertTrue(self.frame._is_valid_opaque_node("Payload"))
+        self.assertFalse(self.frame._is_valid_opaque_field("Payload"))
 
     def test_icmp_parse_binary(self) -> None:
         test_bytes = (

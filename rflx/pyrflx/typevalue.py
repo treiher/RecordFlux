@@ -717,7 +717,7 @@ class MessageValue(TypeValue):
                 or (
                     not self._has_length(nxt)
                     if not isinstance(self._fields[nxt].typeval, OpaqueValue)
-                    else self._is_valid_opaque_node(nxt)
+                    else not self._is_valid_opaque_field(nxt)
                 )
             ):
                 break
@@ -726,27 +726,27 @@ class MessageValue(TypeValue):
             nxt = self._next_field(nxt)
         return fields
 
-    def _is_valid_opaque_node(self, nxt: str) -> bool:
+    def _is_valid_opaque_field(self, field: str) -> bool:
 
-        if self._get_length_unchecked(nxt) == UNDEFINED:
-            return True
+        if self._get_length_unchecked(field) == UNDEFINED:
+            return False
 
-        for edge in self._model.incoming(Field(nxt)):
+        for edge in self._model.incoming(Field(field)):
             if self.__simplified(edge.condition) == TRUE:
                 valid_edge = edge
                 break
         else:
-            return False
+            return True
 
         for ve in valid_edge.length.variables():
             assert isinstance(ve.name, str)
             if ve.name in self._fields and not self._fields[ve.name].set:
-                return True
-
-            if isinstance(ve, Last) and ve.name == "Message":
                 return False
 
-        return False
+            if Last("Message"):
+                return True
+
+        return True
 
     @property
     def valid_fields(self) -> List[str]:
