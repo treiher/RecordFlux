@@ -249,7 +249,7 @@ class Message:
                 for k, v in self._fields.items()
                 if isinstance(v.typeval, ScalarValue) and v.set
             },
-            **{Length(Variable(k)): v.length for k, v in self._fields.items() if v.set},
-            **{First(Variable(k)): v.first for k, v in self._fields.items() if v.set},
+            **{Length(k): v.length for k, v in self._fields.items() if v.set},
+            **{First(k): v.first for k, v in self._fields.items() if v.set},
         }
         return expr.simplified(field_values).simplified(self.__type_literals)
