@@ -26,9 +26,6 @@ class Ada(ABC):
 
 
 class Declaration(Ada):
-    def __init__(self, identifier: StrID) -> None:
-        self.identifier = ID(identifier)
-
     @abstractmethod
     def __str__(self) -> str:
         raise NotImplementedError
@@ -232,7 +229,7 @@ class PackageDeclaration(Declaration):
         private_declarations: List[Declaration] = None,
         formal_parameters: List[FormalDeclaration] = None,
     ) -> None:
-        super().__init__(identifier)
+        self.identifier = ID(identifier)
         self.declarations = declarations or []
         self.private_declarations = private_declarations or []
         self.formal_parameters = formal_parameters
@@ -249,7 +246,7 @@ class PackageDeclaration(Declaration):
 
 class PackageBody(Declaration):
     def __init__(self, identifier: StrID, declarations: List[Declaration] = None) -> None:
-        super().__init__(identifier)
+        self.identifier = ID(identifier)
         self.declarations = declarations or []
 
     def __str__(self) -> str:
@@ -266,7 +263,7 @@ class GenericPackageInstantiation(Declaration):
     def __init__(
         self, identifier: StrID, generic_package: StrID, associations: Sequence[StrID] = None
     ) -> None:
-        super().__init__(identifier)
+        self.identifier = ID(identifier)
         self.generic_package = ID(generic_package)
         self.associations = list(map(ID, associations or []))
 
@@ -287,7 +284,6 @@ class ObjectDeclaration(Declaration):
         constant: bool = False,
         aspects: Sequence[Aspect] = None,
     ) -> None:
-        super().__init__("__NONE__")
         self.identifiers = list(map(ID, identifiers))
         self.type_name = ID(type_name)
         self.expression = expression
@@ -325,7 +321,7 @@ class TypeDeclaration(Declaration):
         discriminants: Sequence[Discriminant] = None,
         aspects: Sequence[Aspect] = None,
     ) -> None:
-        super().__init__(identifier)
+        self.identifier = ID(identifier)
         self.discriminants = discriminants
         self.aspects = aspects or []
 
@@ -717,7 +713,6 @@ class FunctionSpecification(SubprogramSpecification):
 
 class Subprogram(Declaration):
     def __init__(self, specification: SubprogramSpecification) -> None:
-        super().__init__(specification.identifier)
         self.specification = specification
 
     @abstractmethod
@@ -829,7 +824,8 @@ class SubprogramRenamingDeclaration(Subprogram):
 
 class Pragma(Declaration, ContextItem):
     def __init__(self, identifier: StrID, parameters: List[str] = None) -> None:
-        super().__init__(identifier)
+        super().__init__()
+        self.identifier = ID(identifier)
         self.pragma_parameters = parameters or []
 
     def __eq__(self, other: object) -> bool:
