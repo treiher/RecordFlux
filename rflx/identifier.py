@@ -34,7 +34,6 @@ class ID:
         return ".".join(self.parts)
 
     def __add__(self, other: object) -> "ID":
-        print(self, other)
         if isinstance(other, (str, ID)):
             return ID(f"{self}{other}")
         return NotImplemented
