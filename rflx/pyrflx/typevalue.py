@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
 from rflx.common import generic_repr
@@ -65,11 +65,11 @@ class TypeValue(ABC):
         self._value = None
 
     @abstractmethod
-    def assign(self, value: Any, offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: Any, check: bool = True) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
         raise NotImplementedError
 
     @property
@@ -157,7 +157,7 @@ class IntegerValue(ScalarValue):
         assert isinstance(last, Number)
         return last.value
 
-    def assign(self, value: int, offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: int, check: bool = True) -> None:
         if (
             self._type.constraints("__VALUE__", check).simplified(
                 {Variable("__VALUE__"): Number(value)}
@@ -167,7 +167,7 @@ class IntegerValue(ScalarValue):
             raise ValueError(f"value {value} not in type range {self._first} .. {self._last}")
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
         self.assign(int(value))
 
     @property
@@ -202,7 +202,7 @@ class EnumValue(ScalarValue):
     def __init__(self, vtype: Enumeration) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: str, offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: str, check: bool = True) -> None:
         if value not in self._type.literals:
             raise KeyError(f"{value} is not a valid enum value")
         assert (
@@ -216,7 +216,7 @@ class EnumValue(ScalarValue):
         )
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
 
         value_as_int: int = int(value)
         if not Number(value_as_int) in self.literals.values():
@@ -258,10 +258,10 @@ class OpaqueValue(TypeValue):
     def __init__(self, vtype: Opaque) -> None:
         super().__init__(vtype)
 
-    def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: bytes, check: bool = True) -> None:
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
         self._value = bytes(value)
 
     @property
@@ -298,7 +298,7 @@ class ArrayValue(TypeValue):
         self._is_message_array = isinstance(self._element_type, Message)
         self._value = []
 
-    def assign(self, value: List[TypeValue], offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: List[TypeValue], check: bool = True) -> None:
 
         for v in value:
             if self._is_message_array:
@@ -325,7 +325,7 @@ class ArrayValue(TypeValue):
 
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
 
         if self._is_message_array:
 
@@ -491,15 +491,15 @@ class MessageValue(TypeValue):
     def size(self) -> int:
         return len(self.bitstring)
 
-    def assign(self, value: bytes, offset: int = 0, check: bool = True) -> None:
+    def assign(self, value: bytes, check: bool = True) -> None:
 
         msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
-        self.assign_bitvalue(msg_as_bitstr, offset)
+        self.assign_bitvalue(msg_as_bitstr)
 
-    def assign_bitvalue(self, value: Bitstring, offset: int = 0) -> None:
+    def assign_bitvalue(self, value: Bitstring) -> None:
 
         current_field_name = self._next_field(INITIAL.name)
-        last_field_first_in_bitstr = current_field_first_in_bitstr = 0 + offset
+        last_field_first_in_bitstr = current_field_first_in_bitstr = 0
         current_field_length = 0
 
         def get_current_pos_in_bitstr(field_name: str) -> int:

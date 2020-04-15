@@ -624,9 +624,13 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(self.frame.bytestring, test_bytes)
 
-    def test_tlv_checksum_binary(self) -> None:
-        test_bytes = b"\x01"
-        self.tlv_checksum.assign(test_bytes, 6)
+    def test_parsing_bitstring_too_short(self) -> None:
+        test_bytes = b"\x40"
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short - stopped while parsing field: Length",
+        ):
+            self.tlv_checksum.assign(test_bytes)
         self.assertFalse(self.tlv_checksum.valid_message)
 
     def test_odd_length_binary(self) -> None:
@@ -711,11 +715,14 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_ethernet_ieee_802_3_invalid_length(self) -> None:
 
-        # valid message, but not valid field
         with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        with self.assertRaisesRegex(ValueError, "invalid data length: 12000 != 368"):
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Payload",
+        ):
             self.frame.assign(msg_as_bytes)
 
         self.assertFalse(self.frame.valid_message)
@@ -995,7 +1002,7 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv_checksum.set("Tag", "Msg_Error")
         self.assertTrue(self.tlv_checksum.valid_message)
 
-    def test_array_parse_form_bytes(self) -> None:
+    def test_array_parse_from_bytes(self) -> None:
 
         self.array_test_nested_msg.assign(b"\x02\x05\x06")
         self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
@@ -1087,7 +1094,7 @@ class TestPyRFLX(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "cannot append to array: message is invalid Message"
         ):
-            msg_array.assign_bitvalue(Bitstring("01000000"))
+            msg_array.assign_bitvalue(Bitstring("0100000000000000"))
 
         self.assertEqual(msg_array.value, [])
 
