@@ -82,15 +82,18 @@ class TypeValue(ABC):
     def size(self) -> int:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def value(self) -> Any:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def accepted_type(self) -> type:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def literals(self) -> Mapping[Name, Expr]:
         raise NotImplementedError
 
@@ -117,11 +120,13 @@ class ScalarValue(TypeValue):
     def __init__(self, vtype: Scalar) -> None:
         super().__init__(vtype)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def expr(self) -> Expr:
         return NotImplemented
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def literals(self) -> Mapping[Name, Expr]:
         raise NotImplementedError
 

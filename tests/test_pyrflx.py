@@ -595,7 +595,6 @@ class TestPyRFLX(unittest.TestCase):
         self.frame.set("Destination", 2 ** 48 - 1)
         self.frame.set("Source", 0)
         self.frame.set("Type_Length_TPID", 1501)
-        self.frame._fields["Type_Length"].typeval.assign(1501)
 
         self.assertTrue(self.frame._is_valid_opaque_node("Payload"))
 
@@ -1040,8 +1039,6 @@ class TestPyRFLX(unittest.TestCase):
         # pylint: disable=protected-access
 
         type_array = ArrayValue(Array("Test.Array", ModularInteger("Test.Mod_Int", Number(256))))
-        type_array._is_message_array = False
-        type_array._element_type = ModularInteger("Test.Mod_Int", Number(256))
 
         intval = IntegerValue(ModularInteger("Test.Int", Number(256)))
         enumval = EnumValue(
