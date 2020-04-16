@@ -16,4 +16,7 @@ is
 
    type Boolean_Base is mod 2;
 
+   type Long_Unsigned is mod 2**Long_Integer'Size with
+     Annotate => (GNATprove, No_Wrap_Around);
+
 end RFLX.Builtin_Types;

@@ -1,3 +1,5 @@
+--  with System.Unsigned_Types; use System.Unsigned_Types;
+with RFLX.Builtin_Types; use RFLX.Builtin_Types;
 with RFLX.Lemmas;
 
 package body RFLX.Generic_Types is
@@ -11,26 +13,26 @@ package body RFLX.Generic_Types is
       pragma Assert (Byte'Pos (Byte'First) = 0);
       pragma Assert (Byte'Pos (Byte'Last) = 2**Byte'Size - 1);
 
-      LSB_Offset : constant Long_Integer := Offset'Pos (Ofst);
+      LSB_Offset : constant Natural := Offset'Pos (Ofst);
 
       --  Index pointing to least significant element
-      Least_Significant_Index : constant Long_Integer := LSB_Offset / Byte'Size;
+      Least_Significant_Index : constant Natural := LSB_Offset / Byte'Size;
 
       --  Bits the least significant element (LSE) is shifted left relative to a single element
       LSE_Offset : constant Natural := Natural (LSB_Offset mod Byte'Size);
 
       --  Index pointing to most significant index
-      Most_Significant_Index : constant Long_Integer :=
-        (LSB_Offset + Long_Integer (Value'Size) - 1) / Byte'Size;
+      Most_Significant_Index : constant Natural :=
+        (LSB_Offset + Natural (Value'Size) - 1) / Byte'Size;
 
       --  Bits the most significant element (MSE) is shifted right relative to a single element
       MSE_Offset : constant Natural := Byte'Size - LSE_Offset;
 
-      function D (Idx : Long_Integer) return Byte with
+      function D (Idx : Natural) return Byte with
         Pre =>
           Idx >= 0 and then Idx < Data'Length;
 
-      function D (Idx : Long_Integer) return Byte
+      function D (Idx : Natural) return Byte
       is
          function ES return Natural is (Byte'Size) with Post => ES'Result = Byte'Size;
          E : constant Natural := (LSE_Offset + Value'Size + Byte'Size - 1) mod ES + 1;
@@ -44,17 +46,17 @@ package body RFLX.Generic_Types is
          end;
       end D;
 
-      type Result_Type is mod 2**Long_Integer'Size;
+      type Result_Type is mod 2**Long_Unsigned'Size;
       Result : Result_Type := 0;
 
-      function LIS return Natural is (Long_Integer'Size) with Post => LIS'Result = Long_Integer'Size;
-      pragma Assert (2**(LIS - 2) - 1 = 2**(Long_Integer'Size - 2) - 1);
+      function LIS return Natural is (Long_Unsigned'Size) with Post => LIS'Result = Long_Unsigned'Size;
+      pragma Assert (2**(LIS - 2) - 1 = 2**(Long_Unsigned'Size - 2) - 1);
       --  WORKAROUND: Componolit/Workarounds#15
       pragma Annotate (GNATprove, False_Positive, "assertion",
                        "solvers cannot show correspondence between integers and exponentiation abstraction");
       pragma Annotate (GNATprove, False_Positive, "overflow",
                        "solvers cannot show that overflow does not occur for 2**62");
-      Pow2_LSE_Offset : constant Long_Integer := 2**LSE_Offset;
+      Pow2_LSE_Offset : constant Long_Unsigned := 2**LSE_Offset;
 
    begin
       pragma Assert (Value'Size - Value'Size mod Byte'Size
@@ -69,8 +71,8 @@ package body RFLX.Generic_Types is
             Lemmas.Mult_Limit (Byte'Pos (D_Next) mod Pow2_LSE_Offset, LSE_Offset, 2**MSE_Offset, MSE_Offset);
             Lemmas.Mult_Ge_0 (Byte'Pos (D_Next) mod Pow2_LSE_Offset, 2**MSE_Offset);
             declare
-               Current : constant Long_Integer := Byte'Pos (D_Current) / Pow2_LSE_Offset;
-               Next    : constant Long_Integer := Byte'Pos (D_Next) mod Pow2_LSE_Offset * 2**MSE_Offset;
+               Current : constant Long_Unsigned := Byte'Pos (D_Current) / Pow2_LSE_Offset;
+               Next    : constant Long_Unsigned := Byte'Pos (D_Next) mod Pow2_LSE_Offset * 2**MSE_Offset;
             begin
                Result := Result
                  + (Result_Type (Current) + Result_Type (Next))
@@ -95,10 +97,10 @@ package body RFLX.Generic_Types is
       pragma Assert (Byte'Pos (Byte'First) = 0);
       pragma Assert (Byte'Pos (Byte'Last) = 2**Byte'Size - 1);
 
-      LSB_Offset : constant Long_Integer := Offset'Pos (Ofst);
+      LSB_Offset : constant Long_Unsigned := Offset'Pos (Ofst);
 
       --  Index pointing to least significant element
-      Least_Significant_Index : constant Long_Integer := LSB_Offset / Byte'Size;
+      Least_Significant_Index : constant Long_Unsigned := LSB_Offset / Byte'Size;
 
       pragma Assert (Least_Significant_Index >= 0 and then Least_Significant_Index < Data'Length);
 
@@ -106,8 +108,8 @@ package body RFLX.Generic_Types is
       LSE_Offset : constant Natural := Natural (LSB_Offset mod Byte'Size);
 
       --  Index pointing to most significant index
-      Most_Significant_Index : constant Long_Integer :=
-        (LSB_Offset + Long_Integer (Value'Size) - 1) / Byte'Size;
+      Most_Significant_Index : constant Long_Unsigned :=
+        (LSB_Offset + Long_Unsigned (Value'Size) - 1) / Byte'Size;
 
       function ES return Natural is (Byte'Size) with Post => ES'Result = Byte'Size;
 
@@ -120,7 +122,7 @@ package body RFLX.Generic_Types is
       --  Bits the most significant element (MSE) is shifted right relative to a single element
       MSE_Offset : constant Natural := Byte'Size - MSE_Bits;
 
-      function Read (Idx : Long_Integer) return Byte with
+      function Read (Idx : Long_Unsigned) return Byte with
         Pre =>
           Idx >= 0 and then Idx < Data'Length
       is
@@ -128,7 +130,7 @@ package body RFLX.Generic_Types is
          return Data (Index'Val ((Index'Pos (Data'Last) - Idx)));
       end Read;
 
-      procedure Write (Idx : Long_Integer; Element : Byte) with
+      procedure Write (Idx : Long_Unsigned; Element : Byte) with
         Pre =>
           Idx >= 0 and then Idx < Data'Length
       is
@@ -136,34 +138,34 @@ package body RFLX.Generic_Types is
          Data (Index'Val ((Index'Pos (Data'Last) - Idx))) := Element;
       end Write;
 
-      function LIS return Natural is (Long_Integer'Size) with Post => LIS'Result = Long_Integer'Size;
-      pragma Assert (2**(LIS - 2) - 1 = 2**(Long_Integer'Size - 2) - 1);
+      function LIS return Natural is (Long_Unsigned'Size) with Post => LIS'Result = Long_Unsigned'Size;
+      pragma Assert (2**(LIS - 2) - 1 = 2**(Long_Unsigned'Size - 2) - 1);
       --  WORKAROUND: Componolit/Workarounds#15
       pragma Annotate (GNATprove, False_Positive, "assertion",
                        "solvers cannot show correspondence between integers and exponentiation abstraction");
       pragma Annotate (GNATprove, False_Positive, "overflow",
                        "solvers cannot show that overflow does not occur for 2**62");
 
-      Pow2_LSE_Offset : constant Long_Integer := 2**LSE_Offset;
-      Pow2_LSE_Bits   : constant Long_Integer := 2**LSE_Bits;
-      Pow2_ES         : constant Long_Integer := 2**ES;
+      Pow2_LSE_Offset : constant Long_Unsigned := 2**LSE_Offset;
+      Pow2_LSE_Bits   : constant Long_Unsigned := 2**LSE_Bits;
+      Pow2_ES         : constant Long_Unsigned := 2**ES;
 
-      pragma Assert (ES < Long_Integer'Size - 2);
+      pragma Assert (ES < Long_Unsigned'Size - 2);
       pragma Assert (2**ES = 2**Byte'Size);
       --  WORKAROUND: Componolit/Workarounds#15
       pragma Annotate (GNATprove, False_Positive, "assertion",
                        "solvers cannot show correspondence between integers and exponentiation abstraction");
       pragma Annotate (GNATprove, False_Positive, "overflow",
-                       "solvers cannot show that overflow does not occur when exponent is lower than (Long_Integer'Size - 2)");
+                       "solvers cannot show that overflow does not occur when exponent is lower than (Long_Unsigned'Size - 2)");
 
-      V : Long_Integer;
+      V : Long_Unsigned;
    begin
       if Least_Significant_Index = Most_Significant_Index then
          declare
-            LR_Value      : constant Long_Integer := Byte'Pos (Read (Least_Significant_Index)) mod 2**LSE_Offset;
-            Element_Value : constant Long_Integer := (Value'Pos (Val) mod 2**Value'Size);
+            LR_Value      : constant Long_Unsigned := Byte'Pos (Read (Least_Significant_Index)) mod 2**LSE_Offset;
+            Element_Value : constant Long_Unsigned := (Value'Pos (Val) mod 2**Value'Size);
             UR_Offset     : constant Natural := LSE_Offset + Value'Size;
-            UR_Value      : constant Long_Integer := Byte'Pos (Read (Most_Significant_Index)) / 2**UR_Offset;
+            UR_Value      : constant Long_Unsigned := Byte'Pos (Read (Most_Significant_Index)) / 2**UR_Offset;
          begin
             Lemmas.Mult_Ge_0 (Element_Value, Pow2_LSE_Offset);
             Lemmas.Mult_Limit (Element_Value, LSE_Bits, Pow2_LSE_Offset, LSE_Offset);
@@ -187,8 +189,8 @@ package body RFLX.Generic_Types is
       else
          --  LSE
          declare
-            LSE_Value   : constant Long_Integer := (Value'Pos (Val) mod Pow2_LSE_Bits);
-            LSE_Current : constant Long_Integer := Byte'Pos (Read (Least_Significant_Index)) mod 2**LSE_Offset;
+            LSE_Value   : constant Long_Unsigned := (Value'Pos (Val) mod Pow2_LSE_Bits);
+            LSE_Current : constant Long_Unsigned := Byte'Pos (Read (Least_Significant_Index)) mod 2**LSE_Offset;
          begin
             Lemmas.Mult_Ge_0 (LSE_Value, Pow2_LSE_Offset);
             Lemmas.Mult_Limit (LSE_Value, LSE_Bits, Pow2_LSE_Offset, LSE_Offset);
@@ -213,8 +215,8 @@ package body RFLX.Generic_Types is
 
          --  MSE
          declare
-            MSE_Current : constant Long_Integer := Byte'Pos (Read (Most_Significant_Index)) / 2**MSE_Bits;
-            MSE_Value   : constant Long_Integer := V mod 2**MSE_Bits;
+            MSE_Current : constant Long_Unsigned := Byte'Pos (Read (Most_Significant_Index)) / 2**MSE_Bits;
+            MSE_Value   : constant Long_Unsigned := V mod 2**MSE_Bits;
             pragma Assert (MSE_Value < 2**MSE_Bits);
          begin
             Lemmas.Right_Shift_Limit (Byte'Pos (Read (Most_Significant_Index)), MSE_Offset, MSE_Bits);
