@@ -502,7 +502,7 @@ class TestPyRFLX(unittest.TestCase):
         with self.assertRaisesRegex(KeyError, r"Three is not a valid enum value"):
             enumvalue.assign("Three")
         with self.assertRaisesRegex(KeyError, r"Number 15 is not a valid enum value"):
-            enumvalue.assign_bitvalue(Bitstring("1111"))
+            enumvalue.parse(Bitstring("1111"))
 
     def test_value_opaque(self) -> None:
         # pylint: disable=pointless-statement
@@ -516,7 +516,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(opaquevalue.value, b"\x01\x02")
         self.assertEqual(opaquevalue.size, 16)
         self.assertEqual(str(opaquevalue.bitstring), "0000000100000010")
-        opaquevalue.assign_bitvalue(Bitstring("1111"))
+        opaquevalue.parse(Bitstring("1111"))
         self.assertEqual(opaquevalue._value, b"\x0f")
 
     def test_value_equal(self) -> None:
@@ -1080,12 +1080,12 @@ class TestPyRFLX(unittest.TestCase):
             "cannot parse nested messages in array of type TLV.Message: "
             "'Number 0 is not a valid enum value",
         ):
-            msg_array.assign_bitvalue(Bitstring("0001111"))
+            msg_array.parse(Bitstring("0001111"))
 
         with self.assertRaisesRegex(
             ValueError, "cannot append to array: message is invalid Message"
         ):
-            msg_array.assign_bitvalue(Bitstring("0100000000000000"))
+            msg_array.parse(Bitstring("0100000000000000"))
 
         self.assertEqual(msg_array.value, [])
 

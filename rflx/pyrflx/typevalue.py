@@ -69,7 +69,7 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
         raise NotImplementedError
 
     @property
@@ -167,7 +167,7 @@ class IntegerValue(ScalarValue):
             raise ValueError(f"value {value} not in type range {self._first} .. {self._last}")
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
         self.assign(int(value))
 
     @property
@@ -216,7 +216,7 @@ class EnumValue(ScalarValue):
         )
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
 
         value_as_int: int = int(value)
         if not Number(value_as_int) in self.literals.values():
@@ -261,7 +261,7 @@ class OpaqueValue(TypeValue):
     def assign(self, value: bytes, check: bool = True) -> None:
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
         self._value = bytes(value)
 
     @property
@@ -325,7 +325,7 @@ class ArrayValue(TypeValue):
 
         self._value = value
 
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
 
         if self._is_message_array:
 
@@ -334,7 +334,7 @@ class ArrayValue(TypeValue):
                 nested_message = TypeValue.construct(self._element_type)
                 assert isinstance(nested_message, MessageValue)
                 try:
-                    nested_message.assign_bitvalue(value)
+                    nested_message.parse(value)
                 except (IndexError, ValueError, KeyError) as e:
                     raise ValueError(
                         f"cannot parse nested messages in array of type "
@@ -357,7 +357,7 @@ class ArrayValue(TypeValue):
 
             while len(value_str) != 0:
                 nested_value = TypeValue.construct(self._element_type)
-                nested_value.assign_bitvalue(Bitstring(value_str[:type_size_int]))
+                nested_value.parse(Bitstring(value_str[:type_size_int]))
                 self._value.append(nested_value)
                 value_str = value_str[type_size_int:]
         else:
@@ -494,9 +494,9 @@ class MessageValue(TypeValue):
     def assign(self, value: bytes, check: bool = True) -> None:
 
         msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
-        self.assign_bitvalue(msg_as_bitstr)
+        self.parse(msg_as_bitstr)
 
-    def assign_bitvalue(self, value: Bitstring) -> None:
+    def parse(self, value: Bitstring) -> None:
 
         current_field_name = self._next_field(INITIAL.name)
         last_field_first_in_bitstr = current_field_first_in_bitstr = 0
@@ -601,11 +601,11 @@ class MessageValue(TypeValue):
             if isinstance(value, Bitstring):
                 field.first = self._get_first(fld)
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
-                    field.typeval.assign_bitvalue(value)
+                    field.typeval.parse(value)
                     field.length = Number(field.typeval.size)
                 else:
                     field.length = self._get_length(fld)
-                    field.typeval.assign_bitvalue(value)
+                    field.typeval.parse(value)
             elif isinstance(value, field.typeval.accepted_type):
                 field.first = self._get_first(fld)
                 if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
@@ -626,7 +626,6 @@ class MessageValue(TypeValue):
 
         if all([self.__simplified(o.condition) == FALSE for o in self._model.outgoing(Field(fld))]):
             self._fields[fld].typeval.clear()
-            print([o.condition for o in self._model.outgoing(Field(fld))])
             raise ValueError("value does not fulfill field condition")
 
         if isinstance(field.typeval, OpaqueValue) and field.typeval.size != field.length.value:
