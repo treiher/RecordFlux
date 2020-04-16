@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from rflx.common import generic_repr
 from rflx.expression import (
@@ -19,6 +19,7 @@ from rflx.model import (
     FINAL,
     INITIAL,
     Array,
+    Composite,
     Enumeration,
     Field,
     Integer,
@@ -79,7 +80,7 @@ class TypeValue(ABC):
 
     @property
     @abstractmethod
-    def size(self) -> int:
+    def size(self) -> Expr:
         raise NotImplementedError
 
     @property
@@ -131,10 +132,10 @@ class ScalarValue(TypeValue):
         raise NotImplementedError
 
     @property
-    def size(self) -> int:
+    def size(self) -> Number:
         size_expr = self._type.size.simplified()
         assert isinstance(size_expr, Number)
-        return size_expr.value
+        return Number(size_expr.value)
 
 
 class IntegerValue(ScalarValue):
@@ -251,7 +252,45 @@ class EnumValue(ScalarValue):
         return {Variable(k): v for k, v in self._type.literals.items()}
 
 
-class OpaqueValue(TypeValue):
+class CompositeValue(TypeValue):
+
+    _expected_size: Optional[Expr]
+
+    def __init__(self, vtype: Composite) -> None:
+        self._expected_size = None
+        super().__init__(vtype)
+
+    def set_expected_size(self, expected_size: Expr) -> None:
+        self._expected_size = expected_size
+
+    def _check_length_of_assigned_value(
+        self, value: Union[bytes, Bitstring, List[TypeValue]]
+    ) -> None:
+        if isinstance(value, bytes):
+            length_of_value = len(value) * 8
+        elif isinstance(value, Bitstring):
+            length_of_value = len(value)
+        else:
+            bits = [str(element.bitstring) for element in value]
+            length_of_value = len(Bitstring(str.join("", bits)))
+
+        if (
+            self._expected_size is not None
+            and isinstance(self._expected_size, Number)
+            and length_of_value != self._expected_size.value
+        ):
+            raise ValueError(
+                f"invalid data length: input length is {len(value) * 8} "
+                f"while expected input length is {self._expected_size.value}"
+            )
+
+    @property
+    @abstractmethod
+    def literals(self) -> Mapping[Name, Expr]:
+        raise NotImplementedError
+
+
+class OpaqueValue(CompositeValue):
 
     _value: bytes
 
@@ -259,15 +298,18 @@ class OpaqueValue(TypeValue):
         super().__init__(vtype)
 
     def assign(self, value: bytes, check: bool = True) -> None:
+        self._check_length_of_assigned_value(value)
         self._value = value
 
     def parse(self, value: Bitstring) -> None:
+        self._check_length_of_assigned_value(value)
         self._value = bytes(value)
 
     @property
-    def size(self) -> int:
-        self._raise_initialized()
-        return len(self._value) * 8
+    def size(self) -> Expr:
+        if self._value is None:
+            return self._expected_size if self._expected_size is not None else UNDEFINED
+        return Number(len(self._value) * 8)
 
     @property
     def value(self) -> bytes:
@@ -288,7 +330,7 @@ class OpaqueValue(TypeValue):
         return {}
 
 
-class ArrayValue(TypeValue):
+class ArrayValue(CompositeValue):
 
     _value: List[TypeValue]
 
@@ -299,7 +341,7 @@ class ArrayValue(TypeValue):
         self._value = []
 
     def assign(self, value: List[TypeValue], check: bool = True) -> None:
-
+        self._check_length_of_assigned_value(value)
         for v in value:
             if self._is_message_array:
                 if isinstance(v, MessageValue):
@@ -326,7 +368,7 @@ class ArrayValue(TypeValue):
         self._value = value
 
     def parse(self, value: Bitstring) -> None:
-
+        self._check_length_of_assigned_value(value)
         if self._is_message_array:
 
             while len(value) != 0:
@@ -364,9 +406,10 @@ class ArrayValue(TypeValue):
             raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
 
     @property
-    def size(self) -> int:
-        self._raise_initialized()
-        return len(self.bitstring)
+    def size(self) -> Expr:
+        if not self._value:
+            return self._expected_size if self._expected_size is not None else UNDEFINED
+        return Number(len(self.bitstring))
 
     @property
     def value(self) -> List[TypeValue]:
@@ -376,7 +419,7 @@ class ArrayValue(TypeValue):
     @property
     def bitstring(self) -> Bitstring:
         self._raise_initialized()
-        bits: List[str] = [str(element.bitstring) for element in self._value]
+        bits = [str(element.bitstring) for element in self._value]
         return Bitstring(str.join("", bits))
 
     @property
@@ -403,7 +446,7 @@ class MessageValue(TypeValue):
             self.__type_literals = {**self.__type_literals, **t}
         initial = self.Field(OpaqueValue(Opaque()))
         initial.first = Number(0)
-        initial.length = Number(0)
+        initial.typeval.assign(bytes())
         self._fields[INITIAL.name] = initial
         self._preset_fields(INITIAL.name)
 
@@ -447,7 +490,7 @@ class MessageValue(TypeValue):
 
         typeval = self._fields[fld].typeval
         if isinstance(typeval, ScalarValue):
-            return Number(typeval.size)
+            return typeval.size
         return UNDEFINED
 
     def _has_length(self, fld: str) -> bool:
@@ -464,7 +507,7 @@ class MessageValue(TypeValue):
                 return self.__simplified(l.first)
         prv = self._prev_field(fld)
         if prv:
-            return self.__simplified(Add(self._fields[prv].first, self._fields[prv].length))
+            return self.__simplified(Add(self._fields[prv].first, self._fields[prv].typeval.size))
         return UNDEFINED
 
     def _has_first(self, fld: str) -> bool:
@@ -488,8 +531,8 @@ class MessageValue(TypeValue):
         return {}
 
     @property
-    def size(self) -> int:
-        return len(self.bitstring)
+    def size(self) -> Number:
+        return Number(len(self.bitstring))
 
     def assign(self, value: bytes, check: bool = True) -> None:
 
@@ -524,7 +567,6 @@ class MessageValue(TypeValue):
             assert isinstance(field.typeval, OpaqueValue)
             field.first = self._get_first(field_name)
             self.set(field_name, value[current_pos_in_bitstring:])
-            field.length = Number(field.typeval.size)
 
             return last_pos_in_bitstr, current_pos_in_bitstring
 
@@ -572,8 +614,7 @@ class MessageValue(TypeValue):
                 ) = set_field_without_length(current_field_name, current_field)
 
             elif self._has_length(current_field_name):
-                assert isinstance(current_field.length, Number)
-                current_field_length = current_field.length.value
+                current_field_length = self._get_length(current_field_name).value
                 try:
                     (
                         last_field_first_in_bitstr,
@@ -597,24 +638,15 @@ class MessageValue(TypeValue):
         if fld in self.accessible_fields:
 
             field = self._fields[fld]
-
+            field.first = self._get_first(fld)
             if isinstance(value, Bitstring):
-                field.first = self._get_first(fld)
-                if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
-                    field.typeval.parse(value)
-                    field.length = Number(field.typeval.size)
-                else:
-                    field.length = self._get_length(fld)
-                    field.typeval.parse(value)
+                if isinstance(field.typeval, CompositeValue) and self._has_length(fld):
+                    field.typeval.set_expected_size(self._get_length(fld))
+                field.typeval.parse(value)
             elif isinstance(value, field.typeval.accepted_type):
-                field.first = self._get_first(fld)
-                if isinstance(field.typeval, OpaqueValue) and not self._has_length(fld):
-                    assert isinstance(value, bytes)
-                    field.typeval.assign(value)
-                    field.length = Number(field.typeval.size)
-                else:
-                    field.length = self._get_length(fld)
-                    field.typeval.assign(value)
+                if isinstance(field.typeval, CompositeValue) and self._has_length(fld):
+                    field.typeval.set_expected_size(self._get_length(fld))
+                field.typeval.assign(value)
             else:
                 raise TypeError(
                     f"cannot assign different types: {field.typeval.accepted_type.__name__}"
@@ -628,16 +660,6 @@ class MessageValue(TypeValue):
             self._fields[fld].typeval.clear()
             raise ValueError("value does not fulfill field condition")
 
-        if isinstance(field.typeval, OpaqueValue) and field.typeval.size != field.length.value:
-            flength = field.typeval.size
-            field.typeval.clear()
-            raise ValueError(f"invalid data length: {field.length.value} != {flength}")
-
-        if isinstance(field.typeval, ArrayValue) and field.typeval.size != field.length.value:
-            flength = field.typeval.size
-            field.typeval.clear()
-            raise ValueError(f"invalid data length: {field.length.value} != {flength}")
-
         self._preset_fields(fld)
 
     def _preset_fields(self, fld: str) -> None:
@@ -650,14 +672,11 @@ class MessageValue(TypeValue):
                 break
 
             field.first = self._get_first(nxt)
-            field.length = self._get_length(nxt)
-            if (
-                field.set
-                and isinstance(field.typeval, OpaqueValue)
-                and field.typeval.size != field.length.value
-            ):
+            if isinstance(field.typeval, OpaqueValue):
+                field.typeval.set_expected_size(self._get_length(nxt))
+
+            if field.set and isinstance(field.typeval, OpaqueValue):
                 field.first = UNDEFINED
-                field.length = UNDEFINED
                 field.typeval.clear()
                 break
 
@@ -683,8 +702,6 @@ class MessageValue(TypeValue):
                 break
             bits = bits[: field_val.first.value] + str(self._fields[field].typeval.bitstring)
             field = self._next_field(field)
-        if len(bits) % 8:
-            raise ValueError(f"message length must be dividable by 8 ({len(bits)})")
 
         return Bitstring(bits)
 
@@ -695,6 +712,9 @@ class MessageValue(TypeValue):
     @property
     def bytestring(self) -> bytes:
         bits = str(self.bitstring)
+        if len(bits) < 8:
+            bits = bits.ljust(8, "0")
+
         return b"".join(
             [int(bits[i : i + 8], 2).to_bytes(1, "big") for i in range(0, len(bits), 8)]
         )
@@ -781,7 +801,7 @@ class MessageValue(TypeValue):
                 for k, v in self._fields.items()
                 if isinstance(v.typeval, ScalarValue) and v.set
             },
-            **{Length(k): v.length for k, v in self._fields.items() if v.set},
+            **{Length(k): v.typeval.size for k, v in self._fields.items() if v.set},
             **{First(k): v.first for k, v in self._fields.items() if v.set},
             **{Last(k): v.last for k, v in self._fields.items() if v.set},
         }
@@ -791,14 +811,12 @@ class MessageValue(TypeValue):
     class Field:
         def __init__(self, t: TypeValue):
             self.typeval = t
-            self.length: Expr = UNDEFINED
             self.first: Expr = UNDEFINED
 
         def __eq__(self, other: object) -> bool:
             if isinstance(other, MessageValue.Field):
                 return (
-                    self.length == other.length
-                    and self.first == other.first
+                    self.first == other.first
                     and self.last == other.last
                     and self.typeval == other.typeval
                 )
@@ -811,11 +829,11 @@ class MessageValue(TypeValue):
         def set(self) -> bool:
             return (
                 self.typeval.initialized
-                and isinstance(self.length, Number)
+                and isinstance(self.typeval.size, Number)
                 and isinstance(self.first, Number)
                 and isinstance(self.last, Number)
             )
 
         @property
         def last(self) -> Expr:
-            return Sub(Add(self.first, self.length), Number(1)).simplified()
+            return Sub(Add(self.first, self.typeval.size), Number(1)).simplified()

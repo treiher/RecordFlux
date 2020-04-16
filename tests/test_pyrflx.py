@@ -195,7 +195,9 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv_checksum.set("Tag", "Msg_Data")
         self.tlv_checksum.set("Length", 8)
         self.tlv_checksum.set("Value", v1)
-        with self.assertRaisesRegex(ValueError, "invalid data length: 64 != 80"):
+        with self.assertRaisesRegex(
+            ValueError, "invalid data length: input length is 80 while expected input length is 64"
+        ):
             self.tlv_checksum.set("Value", v2)
 
     def test_tlv_message(self) -> None:
@@ -228,10 +230,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertIn("Checksum", self.tlv_checksum.valid_fields)
 
     def test_tlv_binary_length(self) -> None:
-        # pylint: disable=pointless-statement
         self.tlv_checksum.set("Tag", "Msg_Data")
-        with self.assertRaisesRegex(ValueError, r"message length must be dividable by 8 \(2\)"):
-            self.tlv_checksum.bytestring
         self.tlv_checksum.set("Length", 8)
         self.assertEqual(self.tlv_checksum.bytestring, b"\x40\x08")
 
@@ -514,7 +513,9 @@ class TestPyRFLX(unittest.TestCase):
         opaquevalue.assign(b"\x01\x02")
         self.assertTrue(opaquevalue.initialized)
         self.assertEqual(opaquevalue.value, b"\x01\x02")
-        self.assertEqual(opaquevalue.size, 16)
+        k = opaquevalue.size
+        assert isinstance(k, Number)
+        self.assertEqual(k.value, 16)
         self.assertEqual(str(opaquevalue.bitstring), "0000000100000010")
         opaquevalue.parse(Bitstring("1111"))
         self.assertEqual(opaquevalue._value, b"\x0f")
@@ -569,11 +570,9 @@ class TestPyRFLX(unittest.TestCase):
     def test_field_set(self) -> None:
         f = MessageValue.Field(OpaqueValue(Opaque()))
         self.assertFalse(f.set)
-        f.typeval.assign(b"")
+        f.typeval.assign(b"\x01")
         self.assertFalse(f.set)
         f.first = Number(1)
-        self.assertFalse(f.set)
-        f.length = Number(2)
         self.assertTrue(f.set)
 
     def test_package_name(self) -> None:
@@ -648,7 +647,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
         self.assertEqual(int("0", 16), self.frame.get("Source"))
         self.assertEqual(int("0800", 16), self.frame.get("Type_Length_TPID"))
-        k = self.frame._fields["Payload"].length
+        k = self.frame._fields["Payload"].typeval.size
         assert isinstance(k, Number)
         self.assertEqual(46, k.value // 8)
 
@@ -677,7 +676,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(int("8100", 16), self.frame.get("TPID"))
         self.assertEqual(int("1", 16), self.frame.get("TCI"))
 
-        k = self.frame._fields["Payload"].length
+        k = self.frame._fields["Payload"].typeval.size
         assert isinstance(k, Number)
         self.assertEqual(47, k.value // 8)
 
@@ -890,7 +889,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.ipv4.get("Header_Checksum"), int("7CBE", 16))
         self.assertEqual(self.ipv4.get("Source"), int("7f000001", 16))
         self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
-        self.assertEqual(self.ipv4._fields["Payload"].length, Number(192))
+        self.assertEqual(self.ipv4._fields["Payload"].typeval.size, Number(192))
 
     # ISSUE: Componolit/RecordFlux#199
 
@@ -1044,6 +1043,7 @@ class TestPyRFLX(unittest.TestCase):
                 "Test.Enum", {"something": Number(1), "other": Number(2)}, Number(2), False,
             )
         )
+        enumval.assign("something")
 
         with self.assertRaisesRegex(
             ValueError,
@@ -1092,7 +1092,10 @@ class TestPyRFLX(unittest.TestCase):
         intval.assign(5)
         self.array_test_typeval.set("Length", 42)
 
-        with self.assertRaisesRegex(ValueError, "invalid data length: 336 != 8"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "invalid data length: input length is 8 while " "expected input length is 336",
+        ):
             self.array_test_typeval.set("Bytes", [intval])
 
     def test_bitstring(self) -> None:
