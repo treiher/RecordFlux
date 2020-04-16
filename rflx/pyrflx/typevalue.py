@@ -674,7 +674,7 @@ class MessageValue(TypeValue):
     def bitstring(self) -> Bitstring:
         bits = ""
         field = self._next_field(INITIAL.name)
-        while field and not field == FINAL.name:
+        while field and field != FINAL.name:
             field_val = self._fields[field]
             if (
                 not field_val.set
@@ -738,15 +738,15 @@ class MessageValue(TypeValue):
         else:
             return True
 
-        for ve in valid_edge.length.variables():
-            assert isinstance(ve.name, str)
-            if ve.name in self._fields and not self._fields[ve.name].set:
-                return False
-
-            if Last("Message"):
-                return True
-
-        return True
+        return all(
+            [
+                bool(
+                    (str(ve.name) in self._fields and self._fields[str(ve.name)].set)
+                    or (ve == Last("Message"))
+                )
+                for ve in valid_edge.length.variables()
+            ]
+        )
 
     @property
     def valid_fields(self) -> List[str]:

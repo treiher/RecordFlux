@@ -802,9 +802,6 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ethernet_vlan_tag.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        print(self.frame.bytestring.hex())
-        print(msg_as_bytes.hex())
-
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     # ISSUE: Componolit/RecordFlux#199
@@ -947,13 +944,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_parsing_tlv_data(self) -> None:
         test_bytes = b"\x40\x04\x00\x00\x00\x00"
-        print(Bitstring.from_bytes(test_bytes))
-
         self.tlv.assign(test_bytes)
-
-        print(self.tlv.bytestring.hex())
-        print(test_bytes.hex())
-
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(test_bytes, self.tlv.bytestring)
 

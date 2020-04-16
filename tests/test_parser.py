@@ -8,6 +8,7 @@ from typing import Dict, Sequence
 from rflx.expression import (
     UNDEFINED,
     And,
+    BooleanTrue,
     Div,
     Equal,
     First,
@@ -679,7 +680,24 @@ class TestParser(unittest.TestCase):  # pylint: disable=too-many-public-methods
                     [
                         ModularInteger("__PACKAGE__.Byte", Number(256)),
                         Array("__PACKAGE__.Bytes", ReferenceSpec("__PACKAGE__.Byte")),
-                        MessageSpec("__PACKAGE__.Foo", [Component("Byte", "Byte")]),
+                        MessageSpec(
+                            "__PACKAGE__.Foo",
+                            [
+                                Component(
+                                    "Length",
+                                    "Byte",
+                                    [
+                                        Then(
+                                            "Bytes",
+                                            UNDEFINED,
+                                            Mul(Variable("Length"), Number(8)),
+                                            BooleanTrue(),
+                                        )
+                                    ],
+                                ),
+                                Component("Bytes", "Bytes"),
+                            ],
+                        ),
                         Array("__PACKAGE__.Bar", ReferenceSpec("__PACKAGE__.Foo")),
                     ],
                 ),
