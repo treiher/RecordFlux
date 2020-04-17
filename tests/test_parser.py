@@ -685,7 +685,7 @@ class TestParser(unittest.TestCase):  # pylint: disable=too-many-public-methods
                                 Component(
                                     "Length",
                                     "Byte",
-                                    [Then("Bytes", UNDEFINED, Mul(Variable("Length"), Number(8)),)],
+                                    [Then("Bytes", UNDEFINED, Mul(Variable("Length"), Number(8)))],
                                 ),
                                 Component("Bytes", "Bytes"),
                             ],
