@@ -730,7 +730,12 @@ class TestPyRFLX(unittest.TestCase):
 
         test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
 
-        self.frame.assign(test_bytes)
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Type_Length_TPID",
+        ):
+            self.frame.assign(test_bytes)
 
         self.assertEqual(int("000000000001", 16), self.frame.get("Destination"))
         self.assertEqual(int("000000000002", 16), self.frame.get("Source"))
@@ -949,7 +954,12 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_parsing_tlv_data_zero(self) -> None:
         test_bytes = b"\x40\x00"
-        self.tlv_checksum.assign(test_bytes)
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Checksum",
+        ):
+            self.tlv_checksum.assign(test_bytes)
         self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Data")
         self.assertEqual(self.tlv_checksum.get("Length"), 0)
         self.assertFalse(self.tlv_checksum.valid_message)
@@ -996,7 +1006,7 @@ class TestPyRFLX(unittest.TestCase):
         array_message_one.set("Byte", 5)
         array_message_two.set("Byte", 6)
 
-        foos: Union[List[TypeValue]] = [array_message_one, array_message_two]
+        foos: List[TypeValue] = [array_message_one, array_message_two]
 
         self.array_test_nested_msg.set("Length", 2)
         self.array_test_nested_msg.set("Bar", foos)
@@ -1087,10 +1097,13 @@ class TestPyRFLX(unittest.TestCase):
         ):
             msg_array.parse(Bitstring("0001111"))
 
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv._fields["Length"].typeval.assign(111111111111111, False)
         with self.assertRaisesRegex(
-            ValueError, "cannot append to array: message is invalid Message"
+            ValueError,
+            'cannot assign message "Message" to array of messages: all messages must be valid',
         ):
-            msg_array.parse(Bitstring("0100000000000000"))
+            msg_array.assign([self.tlv])
 
         self.assertEqual(msg_array.value, [])
 
@@ -1098,8 +1111,7 @@ class TestPyRFLX(unittest.TestCase):
         self.array_test_typeval.set("Length", 42)
 
         with self.assertRaisesRegex(
-            ValueError,
-            "invalid data length: input length is 8 while " "expected input length is 336",
+            ValueError, "invalid data length: input length is 8 while expected input length is 336",
         ):
             self.array_test_typeval.set("Bytes", [intval])
 

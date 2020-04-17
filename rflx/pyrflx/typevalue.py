@@ -603,9 +603,7 @@ class MessageValue(TypeValue):
 
             return last_pos_in_bitstr, current_pos_in_bitstring
 
-        while current_field_name != FINAL.name and (
-            current_field_first_in_bitstr + current_field_length
-        ) <= len(value):
+        while current_field_name != FINAL.name:
 
             current_field = self._fields[current_field_name]
 
