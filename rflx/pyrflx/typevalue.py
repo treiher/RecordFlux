@@ -135,7 +135,7 @@ class ScalarValue(TypeValue):
     def size(self) -> Number:
         size_expr = self._type.size.simplified()
         assert isinstance(size_expr, Number)
-        return Number(size_expr.value)
+        return size_expr
 
 
 class IntegerValue(ScalarValue):
@@ -271,8 +271,8 @@ class CompositeValue(TypeValue):
         elif isinstance(value, Bitstring):
             length_of_value = len(value)
         else:
-            bits = [str(element.bitstring) for element in value]
-            length_of_value = len(Bitstring(str.join("", bits)))
+            bits = [element.bitstring for element in value]
+            length_of_value = len(Bitstring.join(bits))
 
         if (
             self._expected_size is not None
@@ -357,12 +357,14 @@ class ArrayValue(CompositeValue):
                         )
                 else:
                     raise ValueError(
-                        f"cannot assign {type(v)} to an array of {type(self._element_type)}"
+                        f"cannot assign {type(v).__name__} to an array of "
+                        f"{type(self._element_type).__name__}"
                     )
             else:
                 if isinstance(v, MessageValue) or not v.equal_type(self._element_type):
                     raise ValueError(
-                        f"cannot assign {type(v)} to an array of {type(self._element_type)}"
+                        f"cannot assign {type(v).__name__} to an array of "
+                        f"{type(self._element_type).__name__}"
                     )
 
         self._value = value
@@ -422,8 +424,8 @@ class ArrayValue(CompositeValue):
     @property
     def bitstring(self) -> Bitstring:
         self._raise_initialized()
-        bits = [str(element.bitstring) for element in self._value]
-        return Bitstring(str.join("", bits))
+        bits = [element.bitstring for element in self._value]
+        return Bitstring.join(bits)
 
     @property
     def accepted_type(self) -> type:

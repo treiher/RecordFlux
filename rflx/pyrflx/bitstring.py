@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Sequence, Union
 
 
 class Bitstring:
@@ -45,3 +45,11 @@ class Bitstring:
     @staticmethod
     def valid_bitstring(bitstring: str) -> bool:
         return all((bit in ["0", "1"] for bit in bitstring))
+
+    @staticmethod
+    def join(iterable: Sequence["Bitstring"]) -> "Bitstring":
+        joined_bitstring = Bitstring()
+        for i in iterable:
+            joined_bitstring += i
+
+        return joined_bitstring

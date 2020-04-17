@@ -1034,9 +1034,7 @@ class TestPyRFLX(unittest.TestCase):
         type_array.assign([intval])
         self.assertEqual(type_array.value, [intval])
         with self.assertRaisesRegex(
-            ValueError,
-            "cannot assign <class 'rflx.pyrflx.typevalue.EnumValue'>"
-            " to an array of <class 'rflx.model.ModularInteger'>",
+            ValueError, "cannot assign EnumValue to an array of ModularInteger",
         ):
             type_array.assign([enumval])
         self.assertEqual(type_array.value, [intval])
@@ -1055,9 +1053,7 @@ class TestPyRFLX(unittest.TestCase):
         enumval.assign("something")
 
         with self.assertRaisesRegex(
-            ValueError,
-            "cannot assign <class 'rflx.pyrflx.typevalue.EnumValue'> to an array of"
-            " <class 'rflx.model.ModularInteger'>",
+            ValueError, "cannot assign EnumValue to an array of ModularInteger",
         ):
             type_array.assign([enumval])
 
