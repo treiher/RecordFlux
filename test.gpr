@@ -58,8 +58,8 @@ project Test is
 
    package Compiler is
       --  WORKAROUND: Componolit/Workarounds#9
-      for Switches ("rflx-lemmas.adb") use ("-gnato13");
-      for Switches ("rflx-lemmas.ads") use ("-gnato13");
+      --  for Switches ("rflx-lemmas.adb") use ("-gnato13");
+      --  for Switches ("rflx-lemmas.ads") use ("-gnato13");
    end Compiler;
 
    package Binder is
