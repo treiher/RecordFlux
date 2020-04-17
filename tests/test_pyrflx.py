@@ -976,17 +976,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(self.tlv.bytestring, expected)
 
-    # def test_generating_tlv_data_zero(self) -> None:
-    # Message cannot become valid because length is 0 and thus
-    # value cannot be set
-
-    # expected = b"\x40\x00"
-    # self.tlv_checksum.set("Tag", "Msg_Data")
-    # self.tlv_checksum.set("Length", 0)
-    # self.tlv.set("Value", b"\x00\x00\x00\x00")
-    # self.assertTrue(self.tlv_checksum.valid_message)
-    # self.assertEqual(self.tlv_checksum.binary, expected)
-
     def test_generating_tlv_error(self) -> None:
 
         self.tlv_checksum.set("Tag", "Msg_Error")
@@ -1031,6 +1020,26 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertTrue(self.array_test_typeval.valid_message)
         self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
+
+    def test_array_preserve_value(self) -> None:
+        intval = IntegerValue(ModularInteger("Test.Int", Number(256)))
+        intval.assign(1)
+        enumval = EnumValue(
+            Enumeration(
+                "Test.Enum", {"something": Number(1), "other": Number(2)}, Number(2), False,
+            )
+        )
+        enumval.assign("something")
+        type_array = ArrayValue(Array("Test.Array", ModularInteger("Test.Mod_Int", Number(256))))
+        type_array.assign([intval])
+        self.assertEqual(type_array.value, [intval])
+        with self.assertRaisesRegex(
+            ValueError,
+            "cannot assign <class 'rflx.pyrflx.typevalue.EnumValue'>"
+            " to an array of <class 'rflx.model.ModularInteger'>",
+        ):
+            type_array.assign([enumval])
+        self.assertEqual(type_array.value, [intval])
 
     def test_arrayvalue(self) -> None:
         # pylint: disable=protected-access

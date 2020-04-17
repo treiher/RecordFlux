@@ -396,12 +396,15 @@ class ArrayValue(CompositeValue):
             type_size = self._element_type.size
             assert isinstance(type_size, Number)
             type_size_int = type_size.value
+            new_value = []
 
             while len(value_str) != 0:
                 nested_value = TypeValue.construct(self._element_type)
                 nested_value.parse(Bitstring(value_str[:type_size_int]))
-                self._value.append(nested_value)
+                new_value.append(nested_value)
                 value_str = value_str[type_size_int:]
+
+            self._value = new_value
         else:
             raise NotImplementedError(f"Arrays of {self._element_type} currently not supported")
 
