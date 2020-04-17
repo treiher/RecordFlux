@@ -1,7 +1,7 @@
 import itertools
 import unittest
 from tempfile import TemporaryDirectory
-from typing import List, Union
+from typing import List
 
 from rflx.expression import UNDEFINED
 from rflx.model import (
@@ -563,14 +563,14 @@ class TestPyRFLX(unittest.TestCase):
     def test_field_eq(self) -> None:
         f1 = MessageValue.Field(OpaqueValue(Opaque()))
         self.assertEqual(f1, MessageValue.Field(OpaqueValue(Opaque())))
-        f1.typeval.assign(b"")
+        f1.typeval.parse(b"")
         self.assertNotEqual(f1, MessageValue.Field(OpaqueValue(Opaque())))
         self.assertNotEqual(f1, None)
 
     def test_field_set(self) -> None:
         f = MessageValue.Field(OpaqueValue(Opaque()))
         self.assertFalse(f.set)
-        f.typeval.assign(b"\x01")
+        f.typeval.parse(b"\x01")
         self.assertFalse(f.set)
         f.first = Number(1)
         self.assertTrue(f.set)
@@ -605,7 +605,7 @@ class TestPyRFLX(unittest.TestCase):
             b"\x30\x31\x32\x33\x34\x35\x36\x37"
         )
 
-        self.icmp.assign(test_bytes)
+        self.icmp.parse(test_bytes)
         self.assertTrue(self.icmp.valid_message)
         self.assertEqual(self.icmp.bytestring, test_bytes)
 
@@ -619,7 +619,7 @@ class TestPyRFLX(unittest.TestCase):
             b"\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37"
         )
 
-        self.frame.assign(test_bytes)
+        self.frame.parse(test_bytes)
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(self.frame.bytestring, test_bytes)
 
@@ -629,12 +629,12 @@ class TestPyRFLX(unittest.TestCase):
             IndexError,
             "Bitstring representing the message is too short - stopped while parsing field: Length",
         ):
-            self.tlv_checksum.assign(test_bytes)
+            self.tlv_checksum.parse(test_bytes)
         self.assertFalse(self.tlv_checksum.valid_message)
 
     def test_odd_length_binary(self) -> None:
         test_bytes = b"\x01\x02\x01\xff\xb8"
-        self.odd_length.assign(test_bytes)
+        self.odd_length.parse(test_bytes)
         self.assertTrue(self.odd_length.valid_message)
 
     def test_parsing_ethernet_2(self) -> None:
@@ -642,7 +642,7 @@ class TestPyRFLX(unittest.TestCase):
         with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.frame.assign(msg_as_bytes)
+        self.frame.parse(msg_as_bytes)
 
         self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
         self.assertEqual(int("0", 16), self.frame.get("Source"))
@@ -659,7 +659,7 @@ class TestPyRFLX(unittest.TestCase):
         with open(f"tests/ethernet_802.3.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.frame.assign(msg_as_bytes)
+        self.frame.parse(msg_as_bytes)
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
@@ -668,7 +668,7 @@ class TestPyRFLX(unittest.TestCase):
         with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.frame.assign(msg_as_bytes)
+        self.frame.parse(msg_as_bytes)
 
         self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
         self.assertEqual(int("0", 16), self.frame.get("Source"))
@@ -688,7 +688,7 @@ class TestPyRFLX(unittest.TestCase):
             msg_as_bytes: bytes = file.read()
 
         with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.assign(msg_as_bytes)
+            self.frame.parse(msg_as_bytes)
 
         self.assertFalse(self.frame.valid_message)
 
@@ -698,7 +698,7 @@ class TestPyRFLX(unittest.TestCase):
             msg_as_bytes: bytes = file.read()
 
         with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.assign(msg_as_bytes)
+            self.frame.parse(msg_as_bytes)
 
         self.assertFalse(self.frame.valid_message)
 
@@ -708,7 +708,7 @@ class TestPyRFLX(unittest.TestCase):
             msg_as_bytes: bytes = file.read()
 
         with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.assign(msg_as_bytes)
+            self.frame.parse(msg_as_bytes)
 
         self.assertFalse(self.frame.valid_message)
 
@@ -722,7 +722,7 @@ class TestPyRFLX(unittest.TestCase):
             "Bitstring representing the message is too short"
             " - stopped while parsing field: Payload",
         ):
-            self.frame.assign(msg_as_bytes)
+            self.frame.parse(msg_as_bytes)
 
         self.assertFalse(self.frame.valid_message)
 
@@ -735,7 +735,7 @@ class TestPyRFLX(unittest.TestCase):
             "Bitstring representing the message is too short"
             " - stopped while parsing field: Type_Length_TPID",
         ):
-            self.frame.assign(test_bytes)
+            self.frame.parse(test_bytes)
 
         self.assertEqual(int("000000000001", 16), self.frame.get("Destination"))
         self.assertEqual(int("000000000002", 16), self.frame.get("Source"))
@@ -830,7 +830,7 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.frame.assign(msg_as_bytes)
+        self.frame.parse(msg_as_bytes)
 
         parsed_frame = self.frame.bytestring
 
@@ -877,7 +877,7 @@ class TestPyRFLX(unittest.TestCase):
         with open("tests/ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
-        self.ipv4.assign(msg_as_bytes)
+        self.ipv4.parse(msg_as_bytes)
 
         self.assertEqual(self.ipv4.get("Version"), 4)
         self.assertEqual(self.ipv4.get("IHL"), 5)
@@ -948,7 +948,7 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_parsing_tlv_data(self) -> None:
         test_bytes = b"\x40\x04\x00\x00\x00\x00"
-        self.tlv.assign(test_bytes)
+        self.tlv.parse(test_bytes)
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(test_bytes, self.tlv.bytestring)
 
@@ -959,7 +959,7 @@ class TestPyRFLX(unittest.TestCase):
             "Bitstring representing the message is too short"
             " - stopped while parsing field: Checksum",
         ):
-            self.tlv_checksum.assign(test_bytes)
+            self.tlv_checksum.parse(test_bytes)
         self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Data")
         self.assertEqual(self.tlv_checksum.get("Length"), 0)
         self.assertFalse(self.tlv_checksum.valid_message)
@@ -967,14 +967,14 @@ class TestPyRFLX(unittest.TestCase):
     def test_parsing_tlv_error(self) -> None:
 
         test_bytes = b"\xc0"
-        self.tlv_checksum.assign(test_bytes)
+        self.tlv_checksum.parse(test_bytes)
         self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Error")
         self.assertTrue(self.tlv_checksum.valid_message)
 
     def test_parsing_invalid_tlv_invalid_tag(self) -> None:
         test_bytes = b"\x00\x00"
         with self.assertRaisesRegex(KeyError, "Number 0 is not a valid enum value"):
-            self.tlv_checksum.assign(test_bytes)
+            self.tlv_checksum.parse(test_bytes)
 
     def test_generating_tlv_data(self) -> None:
         expected = b"\x40\x04\x00\x00\x00\x00"
@@ -993,9 +993,9 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_array_parse_from_bytes(self) -> None:
 
-        self.array_test_nested_msg.assign(b"\x02\x05\x06")
+        self.array_test_nested_msg.parse(b"\x02\x05\x06")
         self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
-        self.array_test_typeval.assign(b"\x03\x05\x06\x07")
+        self.array_test_typeval.parse(b"\x03\x05\x06\x07")
         self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
 
     def test_array_nested_messages(self) -> None:

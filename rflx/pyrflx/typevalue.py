@@ -70,7 +70,7 @@ class TypeValue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def parse(self, value: Bitstring) -> None:
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
         raise NotImplementedError
 
     @property
@@ -168,7 +168,9 @@ class IntegerValue(ScalarValue):
             raise ValueError(f"value {value} not in type range {self._first} .. {self._last}")
         self._value = value
 
-    def parse(self, value: Bitstring) -> None:
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
+        if isinstance(value, bytes):
+            value = Bitstring.from_bytes(value)
         self.assign(int(value))
 
     @property
@@ -217,8 +219,9 @@ class EnumValue(ScalarValue):
         )
         self._value = value
 
-    def parse(self, value: Bitstring) -> None:
-
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
+        if isinstance(value, bytes):
+            value = Bitstring.from_bytes(value)
         value_as_int: int = int(value)
         if not Number(value_as_int) in self.literals.values():
             raise KeyError(f"Number {value_as_int} is not a valid enum value")
@@ -301,9 +304,12 @@ class OpaqueValue(CompositeValue):
         self._check_length_of_assigned_value(value)
         self._value = value
 
-    def parse(self, value: Bitstring) -> None:
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
         self._check_length_of_assigned_value(value)
-        self._value = bytes(value)
+        if isinstance(value, bytes):
+            self._value = value
+        else:
+            self._value = bytes(value)
 
     @property
     def size(self) -> Expr:
@@ -369,8 +375,10 @@ class ArrayValue(CompositeValue):
 
         self._value = value
 
-    def parse(self, value: Bitstring) -> None:
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
         self._check_length_of_assigned_value(value)
+        if isinstance(value, bytes):
+            value = Bitstring.from_bytes(value)
         if self._is_message_array:
 
             while len(value) != 0:
@@ -540,12 +548,12 @@ class MessageValue(TypeValue):
         return Number(len(self.bitstring))
 
     def assign(self, value: bytes, check: bool = True) -> None:
+        raise NotImplementedError
 
-        msg_as_bitstr: Bitstring = Bitstring().from_bytes(value)
-        self.parse(msg_as_bitstr)
+    def parse(self, value: Union[Bitstring, bytes]) -> None:
 
-    def parse(self, value: Bitstring) -> None:
-
+        if isinstance(value, bytes):
+            value = Bitstring.from_bytes(value)
         current_field_name = self._next_field(INITIAL.name)
         last_field_first_in_bitstr = current_field_first_in_bitstr = 0
         current_field_length = 0
@@ -577,6 +585,7 @@ class MessageValue(TypeValue):
 
         def set_field_with_length(field_name: str, field_length: int) -> Tuple[int, int]:
 
+            assert isinstance(value, Bitstring)
             last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
 
             if field_length < 8 or field_length % 8 == 0:
