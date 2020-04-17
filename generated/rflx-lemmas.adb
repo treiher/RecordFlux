@@ -2,9 +2,9 @@ package body RFLX.Lemmas with
   SPARK_Mode
 is
 
-   procedure Mult_Limit (Value_1 : Long_Unsigned;
+   procedure Mult_Limit (Value_1 : Long_Integer;
                          Exp_1   : Natural;
-                         Value_2 : Long_Unsigned;
+                         Value_2 : Long_Integer;
                          Exp_2   : Natural)
    is
    begin
@@ -17,29 +17,29 @@ is
       pragma Assert (Value_1 * Value_2 <= 2**(Exp_1 + Exp_2));
    end Mult_Limit;
 
-   procedure Mult_Ge_0 (Factor_1 : Long_Unsigned;
-                        Factor_2 : Long_Unsigned)
+   procedure Mult_Ge_0 (Factor_1 : Long_Integer;
+                        Factor_2 : Long_Integer)
    is
    begin
       null;
    end Mult_Ge_0;
 
-   procedure Mult_Mono (X : Long_Unsigned;
-                        Y : Long_Unsigned;
-                        Z : Long_Unsigned)
+   procedure Mult_Mono (X : Long_Integer;
+                        Y : Long_Integer;
+                        Z : Long_Integer)
    is
    begin
       null;
    end Mult_Mono;
 
-   procedure Mult_Div_Id (X : Long_Unsigned;
-                          Y : Long_Unsigned)
+   procedure Mult_Div_Id (X : Long_Integer;
+                          Y : Long_Integer)
    is
    begin
       null;
    end Mult_Div_Id;
 
-   procedure Div_Pow2_Mono_Strict (X : Long_Unsigned;
+   procedure Div_Pow2_Mono_Strict (X : Long_Integer;
                                    J : Natural;
                                    K : Natural)
    is
@@ -59,7 +59,7 @@ is
       pragma Assert (2**K * (2**J / 2**K) = 2**K * 2**(J - K));
    end Div_Pow2_Mono_Strict;
 
-   procedure Exp_Mult (Base  : Long_Unsigned;
+   procedure Exp_Mult (Base  : Long_Integer;
                        Exp_1 : Natural;
                        Exp_2 : Natural)
    is
@@ -67,7 +67,7 @@ is
       null;
    end Exp_Mult;
 
-   procedure Exp_Div (Base  : Long_Unsigned;
+   procedure Exp_Div (Base  : Long_Integer;
                       Exp_1 : Natural;
                       Exp_2 : Natural)
    is
@@ -76,7 +76,7 @@ is
       Mult_Div_Id (Base**(Exp_1 - Exp_2), Base**Exp_2);
    end Exp_Div;
 
-   procedure Right_Shift_Limit (X : Long_Unsigned;
+   procedure Right_Shift_Limit (X : Long_Integer;
                                 J : Natural;
                                 K : Natural)
    is
@@ -98,7 +98,7 @@ is
       Exp_Div (2, J + K, K);
    end Right_Shift_Limit;
 
-   procedure Left_Shift_Limit (X : Long_Unsigned;
+   procedure Left_Shift_Limit (X : Long_Integer;
                                J : Natural;
                                K : Natural)
    is

@@ -52,7 +52,7 @@ project Test is
          when "yes" =>
             for Default_Switches ("Ada") use ("-O3");
          when "no" =>
-            for Default_Switches ("Ada") use ("-g");  --  , "-gnata"
+            for Default_Switches ("Ada") use ("-g", "-gnata");
       end case;
    end Builder;
 
