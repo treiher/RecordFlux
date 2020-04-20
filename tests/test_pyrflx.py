@@ -638,7 +638,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.bytestring, test_bytes)
 
     def test_bitstring(self) -> None:
-
         with self.assertRaisesRegex(ValueError, "Bitstring does not consist of only 0 and 1"):
             Bitstring("123")
         self.assertEqual(Bitstring("01") + Bitstring("00"), Bitstring("0100"))
@@ -657,7 +656,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.odd_length.valid_message)
 
     def test_arrayvalue_nested_messages(self) -> None:
-
         array_message_one = self.package_array_nested_msg["Foo"]
         array_message_two = self.package_array_nested_msg["Foo"]
 
@@ -708,7 +706,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(type_array.value, [intval])
 
     def test_arrayvalue_parse_from_bytes(self) -> None:
-
         self.array_test_nested_msg.parse(b"\x02\x05\x06")
         self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
         self.array_test_typeval.parse(b"\x03\x05\x06\x07")
@@ -716,7 +713,6 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_arrayvalue_assign_incorrect_values(self) -> None:
         # pylint: disable=protected-access
-
         type_array = ArrayValue(Array("Test.Array", ModularInteger("Test.Mod_Int", Number(256))))
 
         intval = IntegerValue(ModularInteger("Test.Int", Number(256)))
@@ -781,7 +777,6 @@ class TestPyRFLX(unittest.TestCase):
     # rflx-ethernet-tests.adb
 
     def test_ethernet_parsing_ethernet_2(self) -> None:
-
         with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -798,7 +793,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_ethernet_parsing_ieee_802_3(self) -> None:
-
         with open(f"tests/ethernet_802.3.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -807,7 +801,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_ethernet_parsing_ethernet_2_vlan(self) -> None:
-
         with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -826,7 +819,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
-    def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
+    def test_ethernet_parsing_invalid_ethernet_2_too_short(self) -> None:
         with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -843,8 +836,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertFalse(self.frame.valid_message)
 
-    def test_ethernet_invalid_ethernet_2_too_long(self) -> None:
-
+    def test_ethernet_parsing_invalid_ethernet_2_too_long(self) -> None:
         with open("tests/ethernet_invalid_too_long.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -861,7 +853,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertFalse(self.frame.valid_message)
 
     def test_ethernet_parsing_invalid_ethernet_2_undefined_type(self) -> None:
-
         with open("tests/ethernet_undefined.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -876,8 +867,7 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertFalse(self.frame.valid_message)
 
-    def test_ethernet_ieee_802_3_invalid_length(self) -> None:
-
+    def test_ethernet_parsing_ieee_802_3_invalid_length(self) -> None:
         with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -891,7 +881,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertFalse(self.frame.valid_message)
 
     def test_ethenet_parsing_incomplete(self) -> None:
-
         test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
 
         with self.assertRaisesRegex(
@@ -907,7 +896,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertFalse(self.frame.valid_message)
 
     def test_ethernet_generating_ethernet_2(self) -> None:
-
         payload = (
             b"\x45\x00\x00\x2e\x00\x01\x00\x00\x40\x11\x7c\xbc"
             b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x35\x00\x35"
@@ -927,7 +915,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_ethernet_generating_ieee_802_3(self) -> None:
-
         payload = (
             b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
             b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
@@ -949,7 +936,6 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.frame.bytestring, msg_as_bytes)
 
     def test_ethernet_generating_ethernet_2_vlan(self) -> None:
-
         payload = (
             b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
             b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
@@ -974,25 +960,18 @@ class TestPyRFLX(unittest.TestCase):
 
     # ISSUE: Componolit/RecordFlux#199
 
-    # def test_generating_ethernet_2_vlan_dynamic(self) -> None:
+    # def test_ethernet_generating_ethernet_2_vlan_dynamic(self) -> None:
     #    raise NotImplementedError
 
-    # def test_parsing_ipv4_in_ethernet(self) -> None:
+    # rflx in_ipv4-tests.adb
+
+    # def test_ipv4_parsing_udp_in_ipv4(self) -> None:
     #    raise NotImplementedError
 
-    # def test_generating_ipv4_in_ethernet(self) -> None:
+    # def test_ipv4_parsing_udp_in_ipv4_in_ethernet(self) -> None:
     #    raise NotImplementedError
-
-    # def test_parsing_udp_in_ipv4(self) -> None:
-    #    raise NotImplementedError
-
-    # def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-    #    raise NotImplementedError
-
-    # rflx-in_ipv4-tests.adb
 
     def test_ethernet_generating_udp_in_ipv4_in_ethernet(self) -> None:
-
         with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -1041,7 +1020,6 @@ class TestPyRFLX(unittest.TestCase):
     # rflx-ipv4-tests.adb
 
     def test_ipv4_parsing_ipv4(self) -> None:
-
         with open("tests/ipv4_udp.raw", "rb") as file:
             msg_as_bytes: bytes = file.read()
 
@@ -1064,22 +1042,22 @@ class TestPyRFLX(unittest.TestCase):
         self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
         self.assertEqual(self.ipv4._fields["Payload"].typeval.size, Number(192))
 
+    def test_ipv4_parsing_ipv4_option(self) -> None:
+        expected = b"\x44\x03\x2a"
+        self.ipv4_option.parse(expected)
+
+        self.assertEqual(self.ipv4_option.get("Copied"), "False")
+        self.assertEqual(self.ipv4_option.get("Option_Class"), "Debugging_And_Measurement")
+        self.assertEqual(self.ipv4_option.get("Option_Number"), 4)
+        self.assertEqual(self.ipv4_option.get("Option_Length"), 3)
+        self.assertEqual(len(self.ipv4_option.get("Option_Data")), 1)
+
     # ISSUE: Componolit/RecordFlux#199
 
-    # def test_parsing_ipv4_with_options(self) -> None:
-    # with open("tests/ipv4-options_udp.raw", "rb") as file:
-    #    msg_as_bytes: bytes = file.read()
-    # self.ipv4.parse_from_bytes(msg_as_bytes)
-    # for i in self.ipv4.get("Options"):
-    #    self.assertTrue(i.valid_message)
-    # self.assertTrue(self.ipv4.valid_message)
-    # self.assertEqual(self.ipv4.binary, msg_as_bytes)
-
-    # def test_parsing_ipv4_option(self) -> None:
+    # def test_ipv4_parsing_ipv4_with_options(self) -> None:
     # raise NotImplementedError
 
     def test_ipv4_generating_ipv4(self) -> None:
-
         data = (
             b"\x00\x35\x00\x35\x00\x18\x01\x52\x00\x00\x00\x00"
             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -1101,17 +1079,14 @@ class TestPyRFLX(unittest.TestCase):
         self.ipv4.set("Source", int("7f000001", 16))
         self.ipv4.set("Destination", int("7f000001", 16))
         self.ipv4.set("Payload", data)
-
         self.assertTrue(self.ipv4.valid_message)
 
     def test_ipv4_generating_ipv4_option(self) -> None:
-
         self.ipv4_option.set("Copied", "False")
         self.ipv4_option.set("Option_Class", "Debugging_And_Measurement")
         self.ipv4_option.set("Option_Number", 4)
         self.ipv4_option.set("Option_Length", 3)
         self.ipv4_option.set("Option_Data", b"\x2a")
-
         self.assertTrue(self.ipv4_option.valid_message)
 
     # rflx-tlv-tests.adb
@@ -1122,29 +1097,24 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(self.tlv.bytestring, test_bytes)
 
-    def test_tlv_checksum_parsing_tlv_data_zero(self) -> None:
+    def test_tlv_parsing_tlv_data_zero(self) -> None:
         test_bytes = b"\x40\x00"
-        with self.assertRaisesRegex(
-            IndexError,
-            "Bitstring representing the message is too short"
-            " - stopped while parsing field: Checksum",
-        ):
-            self.tlv_checksum.parse(test_bytes)
-        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Data")
-        self.assertEqual(self.tlv_checksum.get("Length"), 0)
-        self.assertFalse(self.tlv_checksum.valid_message)
+        self.tlv.parse(test_bytes)
+        self.assertEqual(self.tlv.get("Tag"), "Msg_Data")
+        self.assertEqual(self.tlv.get("Length"), 0)
+        self.assertTrue(self.tlv.valid_message)
 
-    def test_tlv_checksum_parsing_tlv_error(self) -> None:
-
+    def test_tlv_parsing_tlv_error(self) -> None:
         test_bytes = b"\xc0"
-        self.tlv_checksum.parse(test_bytes)
-        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Error")
-        self.assertTrue(self.tlv_checksum.valid_message)
+        self.tlv.parse(test_bytes)
+        self.assertEqual(self.tlv.get("Tag"), "Msg_Error")
+        self.assertTrue(self.tlv.valid_message)
 
-    def test_tlv_checksum_parsing_invalid_tlv_invalid_tag(self) -> None:
+    def test_tlv_parsing_invalid_tlv_invalid_tag(self) -> None:
         test_bytes = b"\x00\x00"
         with self.assertRaisesRegex(KeyError, "Number 0 is not a valid enum value"):
-            self.tlv_checksum.parse(test_bytes)
+            self.tlv.parse(test_bytes)
+        self.assertFalse(self.tlv.valid_message)
 
     def test_tlv_generating_tlv_data(self) -> None:
         expected = b"\x40\x04\x00\x00\x00\x00"
@@ -1156,7 +1126,16 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(self.tlv.bytestring, expected)
 
-    def test_tlv_checksum_generating_tlv_error(self) -> None:
+    def test_tlv_generating_tlv_data_zero(self) -> None:
+        expected = b"\x40\x00"
 
-        self.tlv_checksum.set("Tag", "Msg_Error")
-        self.assertTrue(self.tlv_checksum.valid_message)
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv.set("Length", 0)
+
+        self.assertFalse(self.tlv.valid_message)
+        self.assertEqual(self.tlv.bytestring, expected)
+
+    def test_tlv_generating_tlv_error(self) -> None:
+        self.tlv.set("Tag", "Msg_Error")
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(self.tlv.bytestring, b"\xc0")
