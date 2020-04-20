@@ -100,7 +100,6 @@ class TypeValue(ABC):
 
     @classmethod
     def construct(cls, vtype: Type) -> "TypeValue":
-
         if isinstance(vtype, Integer):
             return IntegerValue(vtype)
         if isinstance(vtype, Enumeration):
@@ -379,7 +378,6 @@ class ArrayValue(CompositeValue):
         if self._is_message_array:
 
             while len(value) != 0:
-
                 nested_message = TypeValue.construct(self._element_type)
                 assert isinstance(nested_message, MessageValue)
                 try:
@@ -398,7 +396,6 @@ class ArrayValue(CompositeValue):
                 value = value[len(nested_message.bitstring) :]
 
         elif isinstance(self._element_type, Scalar):
-
             value_str = str(value)
             type_size = self._element_type.size
             assert isinstance(type_size, Number)
@@ -548,7 +545,6 @@ class MessageValue(TypeValue):
         raise NotImplementedError
 
     def parse(self, value: Union[Bitstring, bytes]) -> None:
-
         if isinstance(value, bytes):
             value = Bitstring.from_bytes(value)
         current_field_name = self._next_field(INITIAL.name)
@@ -556,7 +552,6 @@ class MessageValue(TypeValue):
         current_field_length = 0
 
         def get_current_pos_in_bitstr(field_name: str) -> int:
-
             # if the previous node is a virtual node i.e. has the same first as the current node
             # set the current pos in bitstring back to the first position of its predecessor
             this_first = self._fields[field_name].first
@@ -572,7 +567,6 @@ class MessageValue(TypeValue):
             )
 
         def set_field_without_length(field_name: str, field: MessageValue.Field) -> Tuple[int, int]:
-
             last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
             assert isinstance(field.typeval, OpaqueValue)
             field.first = self._get_first(field_name)
@@ -581,7 +575,6 @@ class MessageValue(TypeValue):
             return last_pos_in_bitstr, current_pos_in_bitstring
 
         def set_field_with_length(field_name: str, field_length: int) -> Tuple[int, int]:
-
             assert isinstance(value, Bitstring)
             last_pos_in_bitstr = current_pos_in_bitstring = get_current_pos_in_bitstr(field_name)
 
@@ -610,13 +603,10 @@ class MessageValue(TypeValue):
             return last_pos_in_bitstr, current_pos_in_bitstring
 
         while current_field_name != FINAL.name:
-
             current_field = self._fields[current_field_name]
-
             if isinstance(current_field.typeval, OpaqueValue) and not self._has_length(
                 current_field_name
             ):
-
                 (
                     last_field_first_in_bitstr,
                     current_field_first_in_bitstr,
@@ -643,9 +633,7 @@ class MessageValue(TypeValue):
             current_field_name = self._next_field(current_field_name)
 
     def set(self, fld: str, value: Union[bytes, int, str, Sequence[TypeValue], Bitstring]) -> None:
-
         if fld in self.accessible_fields:
-
             field = self._fields[fld]
             field.first = self._get_first(fld)
             if isinstance(value, Bitstring):
@@ -661,7 +649,6 @@ class MessageValue(TypeValue):
                     f"cannot assign different types: {field.typeval.accepted_type.__name__}"
                     f" != {type(value).__name__}"
                 )
-
         else:
             raise KeyError(f"cannot access field {fld}")
 
@@ -681,11 +668,9 @@ class MessageValue(TypeValue):
         self._preset_fields(fld)
 
     def _preset_fields(self, fld: str) -> None:
-
         nxt = self._next_field(fld)
         while nxt and nxt != FINAL.name:
             field = self._fields[nxt]
-
             if not self._has_first(nxt) or not self._has_length(nxt):
                 break
 
@@ -743,7 +728,6 @@ class MessageValue(TypeValue):
 
     @property
     def accessible_fields(self) -> List[str]:
-
         nxt = self._next_field(INITIAL.name)
         fields: List[str] = []
         while nxt and nxt != FINAL.name:
@@ -764,7 +748,6 @@ class MessageValue(TypeValue):
         return fields
 
     def _is_valid_opaque_field(self, field: str) -> bool:
-
         if self._get_length_unchecked(field) == UNDEFINED:
             return False
 
