@@ -306,10 +306,7 @@ class OpaqueValue(CompositeValue):
 
     def parse(self, value: Union[Bitstring, bytes]) -> None:
         self._check_length_of_assigned_value(value)
-        if isinstance(value, bytes):
-            self._value = value
-        else:
-            self._value = bytes(value)
+        self._value = bytes(value)
 
     @property
     def size(self) -> Expr:
@@ -670,18 +667,15 @@ class MessageValue(TypeValue):
 
         if all([self.__simplified(o.condition) == FALSE for o in self._model.outgoing(Field(fld))]):
             self._fields[fld].typeval.clear()
-            value_repr = None
-            if isinstance(value, Bitstring):
-                value_repr = str(value)[0:20]
-                value_repr += f"(length: {len(str(value))})"
-            elif isinstance(value, bytes):
+            if isinstance(value, bytes):
                 value_repr = "x" + value.hex()
             else:
                 value_repr = str(value)
 
             raise ValueError(
-                f"value {value_repr} for field {fld} does not fulfill any field"
-                f" condition: {[str(o.condition) for o in self._model.outgoing(Field(fld))]}"
+                f"none of the field conditions "
+                f"{[str(o.condition) for o in self._model.outgoing(Field(fld))]}"
+                f" for field {fld} have been met by the assigned value: {value_repr}"
             )
 
         self._preset_fields(fld)

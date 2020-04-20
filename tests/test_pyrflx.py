@@ -406,8 +406,8 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "value 1501 for field Type_Length does not fulfill any field condition: "
-            "['Type_Length <= 1500', 'Type_Length >= 1536']",
+            "none of the field conditions ['Type_Length <= 1500', 'Type_Length >= 1536']"
+            " for field Type_Length have been met by the assigned value: 1501",
         )
 
     def test_tls_fields(self) -> None:
@@ -425,9 +425,9 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "value 16385 for field Length does not fulfill any field condition: "
-            "['Tag /= APPLICATION_DATA\\n   and Length <= 2**14', 'Tag = APPLICATION_DATA\\n"
-            "   and Legacy_Record_Version = TLS_1_2']",
+            "none of the field conditions ['Tag /= APPLICATION_DATA\\n   and Length <= 2**14',"
+            " 'Tag = APPLICATION_DATA\\n   and Legacy_Record_Version = TLS_1_2'] for field "
+            "Length have been met by the assigned value: 16385",
         )
 
     def test_tls_invalid_path(self) -> None:
@@ -834,9 +834,11 @@ class TestPyRFLX(unittest.TestCase):
             self.frame.parse(msg_as_bytes)
 
         self.assertEqual(
-            str(cm.exception),
-            "value 10001011110110101101(length: 344) for field Payload does not fulfill any field "
-            "condition: [\"Payload'Length / 8 >= 46\\n   and Payload'Length / 8 <= 1500\"]",
+            str(cm.exception)[:200],
+            "none of the field conditions [\"Payload'Length / 8 >= 46\\n   "
+            "and Payload'Length / 8 <= 1500\"] for field Payload have been "
+            "met by the assigned value: 100010111101101011010000100000000111"
+            "1011101111000010",
         )
 
         self.assertFalse(self.frame.valid_message)
@@ -850,10 +852,10 @@ class TestPyRFLX(unittest.TestCase):
             self.frame.parse(msg_as_bytes)
 
         self.assertEqual(
-            str(cm.exception),
-            "value 01010001111111000000(length: 12056) for field Payload does not fulfill any "
-            "field condition: "
-            "[\"Payload'Length / 8 >= 46\\n   and Payload'Length / 8 <= 1500\"]",
+            str(cm.exception)[:200],
+            "none of the field conditions [\"Payload'Length / 8 >= 46\\n   and Payload'Length"
+            ' / 8 <= 1500"] for field Payload have been met by the assigned value: 010100011'
+            "1111100000011000100111001010110111000111010",
         )
 
         self.assertFalse(self.frame.valid_message)
@@ -868,8 +870,8 @@ class TestPyRFLX(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "value 0000010111101011(length: 16) for field Type_Length does not fulfill any "
-            "field condition: ['Type_Length <= 1500', 'Type_Length >= 1536']",
+            "none of the field conditions ['Type_Length <= 1500', 'Type_Length >= 1536']"
+            " for field Type_Length have been met by the assigned value: 0000010111101011",
         )
 
         self.assertFalse(self.frame.valid_message)
