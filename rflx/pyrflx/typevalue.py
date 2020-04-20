@@ -670,7 +670,19 @@ class MessageValue(TypeValue):
 
         if all([self.__simplified(o.condition) == FALSE for o in self._model.outgoing(Field(fld))]):
             self._fields[fld].typeval.clear()
-            raise ValueError("value does not fulfill field condition")
+            value_repr = None
+            if isinstance(value, Bitstring):
+                value_repr = str(value)[0:20]
+                value_repr += f"(length: {len(str(value))})"
+            elif isinstance(value, bytes):
+                value_repr = "x" + value.hex()
+            else:
+                value_repr = str(value)
+
+            raise ValueError(
+                f"value {value_repr} for field {fld} does not fulfill any field"
+                f" condition: {[str(o.condition) for o in self._model.outgoing(Field(fld))]}"
+            )
 
         self._preset_fields(fld)
 

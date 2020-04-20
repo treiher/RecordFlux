@@ -400,8 +400,15 @@ class TestPyRFLX(unittest.TestCase):
         self.frame.set("Destination", 2 ** 48 - 1)
         self.frame.set("Source", 0)
         self.frame.set("Type_Length_TPID", 1501)
-        with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
+
+        with self.assertRaises(ValueError) as cm:
             self.frame.set("Type_Length", 1501)
+
+        self.assertEqual(
+            str(cm.exception),
+            "value 1501 for field Type_Length does not fulfill any field condition: "
+            "['Type_Length <= 1500', 'Type_Length >= 1536']",
+        )
 
     def test_tls_fields(self) -> None:
         self.assertEqual(self.record.accessible_fields, ["Tag", "Legacy_Record_Version", "Length"])
@@ -413,8 +420,15 @@ class TestPyRFLX(unittest.TestCase):
 
     def test_tls_invalid_outgoing(self) -> None:
         self.record.set("Tag", "INVALID")
-        with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
+        with self.assertRaises(ValueError) as cm:
             self.record.set("Length", 2 ** 14 + 1)
+
+        self.assertEqual(
+            str(cm.exception),
+            "value 16385 for field Length does not fulfill any field condition: "
+            "['Tag /= APPLICATION_DATA\\n   and Length <= 2**14', 'Tag = APPLICATION_DATA\\n"
+            "   and Legacy_Record_Version = TLS_1_2']",
+        )
 
     def test_tls_invalid_path(self) -> None:
         self.alert.set("Level", "WARNING")
@@ -623,7 +637,12 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.frame.valid_message)
         self.assertEqual(self.frame.bytestring, test_bytes)
 
-    def test_parsing_bitstring_too_short(self) -> None:
+    def test_bitstring(self) -> None:
+
+        with self.assertRaisesRegex(ValueError, "Bitstring does not consist of only 0 and 1"):
+            Bitstring("123")
+        self.assertEqual(Bitstring("01") + Bitstring("00"), Bitstring("0100"))
+
         test_bytes = b"\x40"
         with self.assertRaisesRegex(
             IndexError,
@@ -637,368 +656,7 @@ class TestPyRFLX(unittest.TestCase):
         self.odd_length.parse(test_bytes)
         self.assertTrue(self.odd_length.valid_message)
 
-    def test_parsing_ethernet_2(self) -> None:
-
-        with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.frame.parse(msg_as_bytes)
-
-        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
-        self.assertEqual(int("0", 16), self.frame.get("Source"))
-        self.assertEqual(int("0800", 16), self.frame.get("Type_Length_TPID"))
-        k = self.frame._fields["Payload"].typeval.size
-        assert isinstance(k, Number)
-        self.assertEqual(46, k.value // 8)
-
-        self.assertTrue(self.frame.valid_message)
-        self.assertEqual(msg_as_bytes, self.frame.bytestring)
-
-    def test_parsing_ieee_802_3(self) -> None:
-
-        with open(f"tests/ethernet_802.3.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.frame.parse(msg_as_bytes)
-        self.assertTrue(self.frame.valid_message)
-        self.assertEqual(self.frame.bytestring, msg_as_bytes)
-
-    def test_parsing_ethernet_2_vlan(self) -> None:
-
-        with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.frame.parse(msg_as_bytes)
-
-        self.assertEqual(int("ffffffffffff", 16), self.frame.get("Destination"))
-        self.assertEqual(int("0", 16), self.frame.get("Source"))
-        self.assertEqual(int("8100", 16), self.frame.get("Type_Length_TPID"))
-        self.assertEqual(int("8100", 16), self.frame.get("TPID"))
-        self.assertEqual(int("1", 16), self.frame.get("TCI"))
-
-        k = self.frame._fields["Payload"].typeval.size
-        assert isinstance(k, Number)
-        self.assertEqual(47, k.value // 8)
-
-        self.assertTrue(self.frame.valid_message)
-        self.assertEqual(self.frame.bytestring, msg_as_bytes)
-
-    def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
-        with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.parse(msg_as_bytes)
-
-        self.assertFalse(self.frame.valid_message)
-
-    def test_ethernet_invalid_ethernet_2_too_long(self) -> None:
-
-        with open("tests/ethernet_invalid_too_long.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.parse(msg_as_bytes)
-
-        self.assertFalse(self.frame.valid_message)
-
-    def test_parsing_invalid_ethernet_2_undefined_type(self) -> None:
-
-        with open("tests/ethernet_undefined.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        with self.assertRaisesRegex(ValueError, "value does not fulfill field condition"):
-            self.frame.parse(msg_as_bytes)
-
-        self.assertFalse(self.frame.valid_message)
-
-    def test_ethernet_ieee_802_3_invalid_length(self) -> None:
-
-        with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        with self.assertRaisesRegex(
-            IndexError,
-            "Bitstring representing the message is too short"
-            " - stopped while parsing field: Payload",
-        ):
-            self.frame.parse(msg_as_bytes)
-
-        self.assertFalse(self.frame.valid_message)
-
-    def test_parsing_incomplete(self) -> None:
-
-        test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
-
-        with self.assertRaisesRegex(
-            IndexError,
-            "Bitstring representing the message is too short"
-            " - stopped while parsing field: Type_Length_TPID",
-        ):
-            self.frame.parse(test_bytes)
-
-        self.assertEqual(int("000000000001", 16), self.frame.get("Destination"))
-        self.assertEqual(int("000000000002", 16), self.frame.get("Source"))
-        assert len(self.frame.valid_fields) == 2
-        self.assertFalse(self.frame.valid_message)
-
-    def test_generating_ethernet_2(self) -> None:
-
-        payload = (
-            b"\x45\x00\x00\x2e\x00\x01\x00\x00\x40\x11\x7c\xbc"
-            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x35\x00\x35"
-            b"\x00\x1a\x01\x4e\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        )
-
-        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
-        self.frame.set("Source", int("0", 16))
-        self.frame.set("Type_Length_TPID", int("0800", 16))
-        self.frame.set("Type_Length", int("0800", 16))
-        self.frame.set("Payload", payload)
-
-        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.assertEqual(self.frame.bytestring, msg_as_bytes)
-
-    def test_generating_ieee_802_3(self) -> None:
-
-        payload = (
-            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
-            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        )
-
-        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
-        self.frame.set("Source", int("0", 16))
-        self.frame.set("Type_Length_TPID", 46)
-        self.frame.set("Type_Length", 46)
-        self.frame.set("Payload", payload)
-
-        self.assertTrue(self.frame.valid_message)
-
-        with open("tests/ethernet_802.3.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.assertEqual(self.frame.bytestring, msg_as_bytes)
-
-    def test_generating_ethernet_2_vlan(self) -> None:
-
-        payload = (
-            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
-            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a"
-        )
-
-        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
-        self.frame.set("Source", int("0", 16))
-        self.frame.set("Type_Length_TPID", int("8100", 16))
-        self.frame.set("TPID", int("8100", 16))
-        self.frame.set("TCI", 1)
-        self.frame.set("Type_Length", int("0800", 16))
-        self.frame.set("Payload", payload)
-
-        self.assertTrue(self.frame.valid_message)
-
-        with open("tests/ethernet_vlan_tag.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.assertEqual(self.frame.bytestring, msg_as_bytes)
-
-    # ISSUE: Componolit/RecordFlux#199
-
-    # def test_generating_ethernet_2_vlan_dynamic(self) -> None:
-    #    raise NotImplementedError
-
-    # def test_parsing_ipv4_in_ethernet(self) -> None:
-    #    raise NotImplementedError
-
-    # def test_generating_ipv4_in_ethernet(self) -> None:
-    #    raise NotImplementedError
-
-    # def test_parsing_udp_in_ipv4(self) -> None:
-    #    raise NotImplementedError
-
-    # def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
-    #    raise NotImplementedError
-
-    def test_generating_udp_in_ipv4_in_ethernet(self) -> None:
-
-        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.frame.parse(msg_as_bytes)
-
-        parsed_frame = self.frame.bytestring
-
-        b = b""
-        for _ in itertools.repeat(None, 18):
-            b += b"\x00"
-
-        self.udp.set("Source_Port", 53)
-        self.udp.set("Destination_Port", 53)
-        self.udp.set("Length", 26)
-        self.udp.set("Checksum", int("014E", 16))
-        self.udp.set("Payload", b)
-        udp_binary = self.udp.bytestring
-
-        self.ipv4.set("Version", 4)
-        self.ipv4.set("IHL", 5)
-        self.ipv4.set("DSCP", 0)
-        self.ipv4.set("ECN", 0)
-        self.ipv4.set("Total_Length", 46)
-        self.ipv4.set("Identification", 1)
-        self.ipv4.set("Flag_R", "False")
-        self.ipv4.set("Flag_DF", "False")
-        self.ipv4.set("Flag_MF", "False")
-        self.ipv4.set("Fragment_Offset", 0)
-        self.ipv4.set("TTL", 64)
-        self.ipv4.set("Protocol", "PROTOCOL_UDP")
-        self.ipv4.set("Header_Checksum", int("7CBC", 16))
-        self.ipv4.set("Source", int("7f000001", 16))
-        self.ipv4.set("Destination", int("7f000001", 16))
-        self.ipv4.set("Payload", udp_binary)
-        ip_binary = self.ipv4.bytestring
-
-        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
-        self.frame.set("Source", int("0", 16))
-        self.frame.set("Type_Length_TPID", int("0800", 16))
-        self.frame.set("Type_Length", int("0800", 16))
-        self.frame.set("Payload", ip_binary)
-
-        self.assertTrue(self.frame.valid_message)
-        self.assertEqual(parsed_frame, self.frame.bytestring)
-
-    def test_parsing_ipv4(self) -> None:
-
-        with open("tests/ipv4_udp.raw", "rb") as file:
-            msg_as_bytes: bytes = file.read()
-
-        self.ipv4.parse(msg_as_bytes)
-
-        self.assertEqual(self.ipv4.get("Version"), 4)
-        self.assertEqual(self.ipv4.get("IHL"), 5)
-        self.assertEqual(self.ipv4.get("DSCP"), 0)
-        self.assertEqual(self.ipv4.get("ECN"), 0)
-        self.assertEqual(self.ipv4.get("Total_Length"), 44)
-        self.assertEqual(self.ipv4.get("Identification"), 1)
-        self.assertEqual(self.ipv4.get("Flag_R"), "False")
-        self.assertEqual(self.ipv4.get("Flag_DF"), "False")
-        self.assertEqual(self.ipv4.get("Flag_MF"), "False")
-        self.assertEqual(self.ipv4.get("Fragment_Offset"), 0)
-        self.assertEqual(self.ipv4.get("TTL"), 64)
-        self.assertEqual(self.ipv4.get("Protocol"), "PROTOCOL_UDP")
-        self.assertEqual(self.ipv4.get("Header_Checksum"), int("7CBE", 16))
-        self.assertEqual(self.ipv4.get("Source"), int("7f000001", 16))
-        self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
-        self.assertEqual(self.ipv4._fields["Payload"].typeval.size, Number(192))
-
-    # ISSUE: Componolit/RecordFlux#199
-
-    # def test_parsing_ipv4_with_options(self) -> None:
-    # with open("tests/ipv4-options_udp.raw", "rb") as file:
-    #    msg_as_bytes: bytes = file.read()
-    # self.ipv4.parse_from_bytes(msg_as_bytes)
-    # for i in self.ipv4.get("Options"):
-    #    self.assertTrue(i.valid_message)
-    # self.assertTrue(self.ipv4.valid_message)
-    # self.assertEqual(self.ipv4.binary, msg_as_bytes)
-
-    # def test_parsing_ipv4_option(self) -> None:
-    # raise NotImplementedError
-
-    def test_generating_ipv4(self) -> None:
-
-        data = (
-            b"\x00\x35\x00\x35\x00\x18\x01\x52\x00\x00\x00\x00"
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        )
-
-        self.ipv4.set("Version", 4)
-        self.ipv4.set("IHL", 5)
-        self.ipv4.set("DSCP", 0)
-        self.ipv4.set("ECN", 0)
-        self.ipv4.set("Total_Length", 44)
-        self.ipv4.set("Identification", 1)
-        self.ipv4.set("Flag_R", "False")
-        self.ipv4.set("Flag_DF", "False")
-        self.ipv4.set("Flag_MF", "False")
-        self.ipv4.set("Fragment_Offset", 0)
-        self.ipv4.set("TTL", 64)
-        self.ipv4.set("Protocol", "PROTOCOL_UDP")
-        self.ipv4.set("Header_Checksum", int("7CBE", 16))
-        self.ipv4.set("Source", int("7f000001", 16))
-        self.ipv4.set("Destination", int("7f000001", 16))
-        self.ipv4.set("Payload", data)
-
-        self.assertTrue(self.ipv4.valid_message)
-
-    def test_generating_ipv4_option(self) -> None:
-
-        self.ipv4_option.set("Copied", "False")
-        self.ipv4_option.set("Option_Class", "Debugging_And_Measurement")
-        self.ipv4_option.set("Option_Number", 4)
-        self.ipv4_option.set("Option_Length", 3)
-        self.ipv4_option.set("Option_Data", b"\x2a")
-
-        self.assertTrue(self.ipv4_option.valid_message)
-
-    def test_parsing_tlv_data(self) -> None:
-        test_bytes = b"\x40\x04\x00\x00\x00\x00"
-        self.tlv.parse(test_bytes)
-        self.assertTrue(self.tlv.valid_message)
-        self.assertEqual(test_bytes, self.tlv.bytestring)
-
-    def test_parsing_tlv_data_zero(self) -> None:
-        test_bytes = b"\x40\x00"
-        with self.assertRaisesRegex(
-            IndexError,
-            "Bitstring representing the message is too short"
-            " - stopped while parsing field: Checksum",
-        ):
-            self.tlv_checksum.parse(test_bytes)
-        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Data")
-        self.assertEqual(self.tlv_checksum.get("Length"), 0)
-        self.assertFalse(self.tlv_checksum.valid_message)
-
-    def test_parsing_tlv_error(self) -> None:
-
-        test_bytes = b"\xc0"
-        self.tlv_checksum.parse(test_bytes)
-        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Error")
-        self.assertTrue(self.tlv_checksum.valid_message)
-
-    def test_parsing_invalid_tlv_invalid_tag(self) -> None:
-        test_bytes = b"\x00\x00"
-        with self.assertRaisesRegex(KeyError, "Number 0 is not a valid enum value"):
-            self.tlv_checksum.parse(test_bytes)
-
-    def test_generating_tlv_data(self) -> None:
-        expected = b"\x40\x04\x00\x00\x00\x00"
-
-        self.tlv.set("Tag", "Msg_Data")
-        self.tlv.set("Length", 4)
-        self.tlv.set("Value", b"\x00\x00\x00\x00")
-
-        self.assertTrue(self.tlv.valid_message)
-        self.assertEqual(self.tlv.bytestring, expected)
-
-    def test_generating_tlv_error(self) -> None:
-
-        self.tlv_checksum.set("Tag", "Msg_Error")
-        self.assertTrue(self.tlv_checksum.valid_message)
-
-    def test_array_parse_from_bytes(self) -> None:
-
-        self.array_test_nested_msg.parse(b"\x02\x05\x06")
-        self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
-        self.array_test_typeval.parse(b"\x03\x05\x06\x07")
-        self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
-
-    def test_array_nested_messages(self) -> None:
+    def test_arrayvalue_nested_messages(self) -> None:
 
         array_message_one = self.package_array_nested_msg["Foo"]
         array_message_two = self.package_array_nested_msg["Foo"]
@@ -1014,7 +672,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.array_test_nested_msg.valid_message)
         self.assertEqual(b"\x02\x05\x06", self.array_test_nested_msg.bytestring)
 
-    def test_array_typevalues(self) -> None:
+    def test_arrayvalue_nested_typevalues(self) -> None:
 
         a = IntegerValue(ModularInteger("Array_Type.Byte_One", Number(256)))
         b = IntegerValue(ModularInteger("Array_Type.Byte_Two", Number(256)))
@@ -1031,7 +689,7 @@ class TestPyRFLX(unittest.TestCase):
         self.assertTrue(self.array_test_typeval.valid_message)
         self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
 
-    def test_array_preserve_value(self) -> None:
+    def test_arrayvalue_preserve_value(self) -> None:
         intval = IntegerValue(ModularInteger("Test.Int", Number(256)))
         intval.assign(1)
         enumval = EnumValue(
@@ -1049,7 +707,14 @@ class TestPyRFLX(unittest.TestCase):
             type_array.assign([enumval])
         self.assertEqual(type_array.value, [intval])
 
-    def test_arrayvalue(self) -> None:
+    def test_arrayvalue_parse_from_bytes(self) -> None:
+
+        self.array_test_nested_msg.parse(b"\x02\x05\x06")
+        self.assertEqual(self.array_test_nested_msg.bytestring, b"\x02\x05\x06")
+        self.array_test_typeval.parse(b"\x03\x05\x06\x07")
+        self.assertEqual(self.array_test_typeval.bytestring, b"\x03\x05\x06\x07")
+
+    def test_arrayvalue_assign_incorrect_values(self) -> None:
         # pylint: disable=protected-access
 
         type_array = ArrayValue(Array("Test.Array", ModularInteger("Test.Mod_Int", Number(256))))
@@ -1066,11 +731,9 @@ class TestPyRFLX(unittest.TestCase):
             ValueError, "cannot assign EnumValue to an array of ModularInteger",
         ):
             type_array.assign([enumval])
-
         msg_array = ArrayValue(Array("Test.MsgArray", self.tlv._model))
 
         self.tlv.set("Tag", "Msg_Data")
-
         with self.assertRaisesRegex(
             ValueError,
             'cannot assign message "Message" to array of messages: all messages must be valid',
@@ -1115,9 +778,383 @@ class TestPyRFLX(unittest.TestCase):
         ):
             self.array_test_typeval.set("Bytes", [intval])
 
-    def test_bitstring(self) -> None:
+    # rflx-ethernet-tests.adb
 
-        with self.assertRaisesRegex(ValueError, "Bitstring does not consist of only 0 and 1"):
-            Bitstring("123")
+    def test_ethernet_parsing_ethernet_2(self) -> None:
 
-        self.assertEqual(Bitstring("01") + Bitstring("00"), Bitstring("0100"))
+        with open(f"tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse(msg_as_bytes)
+
+        self.assertEqual(self.frame.get("Destination"), int("ffffffffffff", 16))
+        self.assertEqual(self.frame.get("Source"), int("0", 16))
+        self.assertEqual(self.frame.get("Type_Length_TPID"), int("0800", 16))
+        k = self.frame._fields["Payload"].typeval.size
+        assert isinstance(k, Number)
+        self.assertEqual(k.value // 8, 46)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    def test_ethernet_parsing_ieee_802_3(self) -> None:
+
+        with open(f"tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse(msg_as_bytes)
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    def test_ethernet_parsing_ethernet_2_vlan(self) -> None:
+
+        with open(f"tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse(msg_as_bytes)
+
+        self.assertEqual(self.frame.get("Destination"), int("ffffffffffff", 16))
+        self.assertEqual(self.frame.get("Source"), int("0", 16))
+        self.assertEqual(self.frame.get("Type_Length_TPID"), int("8100", 16))
+        self.assertEqual(self.frame.get("TPID"), int("8100", 16))
+        self.assertEqual(self.frame.get("TCI"), int("1", 16))
+
+        k = self.frame._fields["Payload"].typeval.size
+        assert isinstance(k, Number)
+        self.assertEqual(k.value // 8, 47)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    def test_ethernet_invalid_ethernet_2_too_short(self) -> None:
+        with open(f"tests/ethernet_invalid_too_short.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaises(ValueError) as cm:
+            self.frame.parse(msg_as_bytes)
+
+        self.assertEqual(
+            str(cm.exception),
+            "value 10001011110110101101(length: 344) for field Payload does not fulfill any field "
+            "condition: [\"Payload'Length / 8 >= 46\\n   and Payload'Length / 8 <= 1500\"]",
+        )
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_invalid_ethernet_2_too_long(self) -> None:
+
+        with open("tests/ethernet_invalid_too_long.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaises(ValueError) as cm:
+            self.frame.parse(msg_as_bytes)
+
+        self.assertEqual(
+            str(cm.exception),
+            "value 01010001111111000000(length: 12056) for field Payload does not fulfill any "
+            "field condition: "
+            "[\"Payload'Length / 8 >= 46\\n   and Payload'Length / 8 <= 1500\"]",
+        )
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_parsing_invalid_ethernet_2_undefined_type(self) -> None:
+
+        with open("tests/ethernet_undefined.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaises(ValueError) as cm:
+            self.frame.parse(msg_as_bytes)
+
+        self.assertEqual(
+            str(cm.exception),
+            "value 0000010111101011(length: 16) for field Type_Length does not fulfill any "
+            "field condition: ['Type_Length <= 1500', 'Type_Length >= 1536']",
+        )
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_ieee_802_3_invalid_length(self) -> None:
+
+        with open(f"tests/ethernet_802.3_invalid_length.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Payload",
+        ):
+            self.frame.parse(msg_as_bytes)
+
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethenet_parsing_incomplete(self) -> None:
+
+        test_bytes = b"\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x02"
+
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Type_Length_TPID",
+        ):
+            self.frame.parse(test_bytes)
+
+        self.assertEqual(self.frame.get("Destination"), int("000000000001", 16))
+        self.assertEqual(self.frame.get("Source"), int("000000000002", 16))
+        assert len(self.frame.valid_fields) == 2
+        self.assertFalse(self.frame.valid_message)
+
+    def test_ethernet_generating_ethernet_2(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x2e\x00\x01\x00\x00\x40\x11\x7c\xbc"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x35\x00\x35"
+            b"\x00\x1a\x01\x4e\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("0800", 16))
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", payload)
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    def test_ethernet_generating_ieee_802_3(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", 46)
+        self.frame.set("Type_Length", 46)
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_802.3.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    def test_ethernet_generating_ethernet_2_vlan(self) -> None:
+
+        payload = (
+            b"\x45\x00\x00\x14\x00\x01\x00\x00\x40\x00\x7c\xe7"
+            b"\x7f\x00\x00\x01\x7f\x00\x00\x01\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a"
+        )
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("8100", 16))
+        self.frame.set("TPID", int("8100", 16))
+        self.frame.set("TCI", 1)
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", payload)
+
+        self.assertTrue(self.frame.valid_message)
+
+        with open("tests/ethernet_vlan_tag.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.assertEqual(self.frame.bytestring, msg_as_bytes)
+
+    # ISSUE: Componolit/RecordFlux#199
+
+    # def test_generating_ethernet_2_vlan_dynamic(self) -> None:
+    #    raise NotImplementedError
+
+    # def test_parsing_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
+
+    # def test_generating_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
+
+    # def test_parsing_udp_in_ipv4(self) -> None:
+    #    raise NotImplementedError
+
+    # def test_parsing_udp_in_ipv4_in_ethernet(self) -> None:
+    #    raise NotImplementedError
+
+    # rflx-in_ipv4-tests.adb
+
+    def test_ethernet_generating_udp_in_ipv4_in_ethernet(self) -> None:
+
+        with open("tests/ethernet_ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.frame.parse(msg_as_bytes)
+
+        parsed_frame = self.frame.bytestring
+
+        b = b""
+        for _ in itertools.repeat(None, 18):
+            b += b"\x00"
+
+        self.udp.set("Source_Port", 53)
+        self.udp.set("Destination_Port", 53)
+        self.udp.set("Length", 26)
+        self.udp.set("Checksum", int("014E", 16))
+        self.udp.set("Payload", b)
+        udp_binary = self.udp.bytestring
+
+        self.ipv4.set("Version", 4)
+        self.ipv4.set("IHL", 5)
+        self.ipv4.set("DSCP", 0)
+        self.ipv4.set("ECN", 0)
+        self.ipv4.set("Total_Length", 46)
+        self.ipv4.set("Identification", 1)
+        self.ipv4.set("Flag_R", "False")
+        self.ipv4.set("Flag_DF", "False")
+        self.ipv4.set("Flag_MF", "False")
+        self.ipv4.set("Fragment_Offset", 0)
+        self.ipv4.set("TTL", 64)
+        self.ipv4.set("Protocol", "PROTOCOL_UDP")
+        self.ipv4.set("Header_Checksum", int("7CBC", 16))
+        self.ipv4.set("Source", int("7f000001", 16))
+        self.ipv4.set("Destination", int("7f000001", 16))
+        self.ipv4.set("Payload", udp_binary)
+        ip_binary = self.ipv4.bytestring
+
+        self.frame.set("Destination", int("FFFFFFFFFFFF", 16))
+        self.frame.set("Source", int("0", 16))
+        self.frame.set("Type_Length_TPID", int("0800", 16))
+        self.frame.set("Type_Length", int("0800", 16))
+        self.frame.set("Payload", ip_binary)
+
+        self.assertTrue(self.frame.valid_message)
+        self.assertEqual(self.frame.bytestring, parsed_frame)
+
+    # rflx-ipv4-tests.adb
+
+    def test_ipv4_parsing_ipv4(self) -> None:
+
+        with open("tests/ipv4_udp.raw", "rb") as file:
+            msg_as_bytes: bytes = file.read()
+
+        self.ipv4.parse(msg_as_bytes)
+
+        self.assertEqual(self.ipv4.get("Version"), 4)
+        self.assertEqual(self.ipv4.get("IHL"), 5)
+        self.assertEqual(self.ipv4.get("DSCP"), 0)
+        self.assertEqual(self.ipv4.get("ECN"), 0)
+        self.assertEqual(self.ipv4.get("Total_Length"), 44)
+        self.assertEqual(self.ipv4.get("Identification"), 1)
+        self.assertEqual(self.ipv4.get("Flag_R"), "False")
+        self.assertEqual(self.ipv4.get("Flag_DF"), "False")
+        self.assertEqual(self.ipv4.get("Flag_MF"), "False")
+        self.assertEqual(self.ipv4.get("Fragment_Offset"), 0)
+        self.assertEqual(self.ipv4.get("TTL"), 64)
+        self.assertEqual(self.ipv4.get("Protocol"), "PROTOCOL_UDP")
+        self.assertEqual(self.ipv4.get("Header_Checksum"), int("7CBE", 16))
+        self.assertEqual(self.ipv4.get("Source"), int("7f000001", 16))
+        self.assertEqual(self.ipv4.get("Destination"), int("7f000001", 16))
+        self.assertEqual(self.ipv4._fields["Payload"].typeval.size, Number(192))
+
+    # ISSUE: Componolit/RecordFlux#199
+
+    # def test_parsing_ipv4_with_options(self) -> None:
+    # with open("tests/ipv4-options_udp.raw", "rb") as file:
+    #    msg_as_bytes: bytes = file.read()
+    # self.ipv4.parse_from_bytes(msg_as_bytes)
+    # for i in self.ipv4.get("Options"):
+    #    self.assertTrue(i.valid_message)
+    # self.assertTrue(self.ipv4.valid_message)
+    # self.assertEqual(self.ipv4.binary, msg_as_bytes)
+
+    # def test_parsing_ipv4_option(self) -> None:
+    # raise NotImplementedError
+
+    def test_ipv4_generating_ipv4(self) -> None:
+
+        data = (
+            b"\x00\x35\x00\x35\x00\x18\x01\x52\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+        self.ipv4.set("Version", 4)
+        self.ipv4.set("IHL", 5)
+        self.ipv4.set("DSCP", 0)
+        self.ipv4.set("ECN", 0)
+        self.ipv4.set("Total_Length", 44)
+        self.ipv4.set("Identification", 1)
+        self.ipv4.set("Flag_R", "False")
+        self.ipv4.set("Flag_DF", "False")
+        self.ipv4.set("Flag_MF", "False")
+        self.ipv4.set("Fragment_Offset", 0)
+        self.ipv4.set("TTL", 64)
+        self.ipv4.set("Protocol", "PROTOCOL_UDP")
+        self.ipv4.set("Header_Checksum", int("7CBE", 16))
+        self.ipv4.set("Source", int("7f000001", 16))
+        self.ipv4.set("Destination", int("7f000001", 16))
+        self.ipv4.set("Payload", data)
+
+        self.assertTrue(self.ipv4.valid_message)
+
+    def test_ipv4_generating_ipv4_option(self) -> None:
+
+        self.ipv4_option.set("Copied", "False")
+        self.ipv4_option.set("Option_Class", "Debugging_And_Measurement")
+        self.ipv4_option.set("Option_Number", 4)
+        self.ipv4_option.set("Option_Length", 3)
+        self.ipv4_option.set("Option_Data", b"\x2a")
+
+        self.assertTrue(self.ipv4_option.valid_message)
+
+    # rflx-tlv-tests.adb
+
+    def test_tlv_parsing_tlv_data(self) -> None:
+        test_bytes = b"\x40\x04\x00\x00\x00\x00"
+        self.tlv.parse(test_bytes)
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(self.tlv.bytestring, test_bytes)
+
+    def test_tlv_checksum_parsing_tlv_data_zero(self) -> None:
+        test_bytes = b"\x40\x00"
+        with self.assertRaisesRegex(
+            IndexError,
+            "Bitstring representing the message is too short"
+            " - stopped while parsing field: Checksum",
+        ):
+            self.tlv_checksum.parse(test_bytes)
+        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Data")
+        self.assertEqual(self.tlv_checksum.get("Length"), 0)
+        self.assertFalse(self.tlv_checksum.valid_message)
+
+    def test_tlv_checksum_parsing_tlv_error(self) -> None:
+
+        test_bytes = b"\xc0"
+        self.tlv_checksum.parse(test_bytes)
+        self.assertEqual(self.tlv_checksum.get("Tag"), "Msg_Error")
+        self.assertTrue(self.tlv_checksum.valid_message)
+
+    def test_tlv_checksum_parsing_invalid_tlv_invalid_tag(self) -> None:
+        test_bytes = b"\x00\x00"
+        with self.assertRaisesRegex(KeyError, "Number 0 is not a valid enum value"):
+            self.tlv_checksum.parse(test_bytes)
+
+    def test_tlv_generating_tlv_data(self) -> None:
+        expected = b"\x40\x04\x00\x00\x00\x00"
+
+        self.tlv.set("Tag", "Msg_Data")
+        self.tlv.set("Length", 4)
+        self.tlv.set("Value", b"\x00\x00\x00\x00")
+
+        self.assertTrue(self.tlv.valid_message)
+        self.assertEqual(self.tlv.bytestring, expected)
+
+    def test_tlv_checksum_generating_tlv_error(self) -> None:
+
+        self.tlv_checksum.set("Tag", "Msg_Error")
+        self.assertTrue(self.tlv_checksum.valid_message)
