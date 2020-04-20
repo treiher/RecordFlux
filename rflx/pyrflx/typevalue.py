@@ -28,7 +28,7 @@ from rflx.model import (
     Opaque,
     Scalar,
     Type,
-)
+    Refinement)
 from rflx.pyrflx.bitstring import Bitstring
 
 
@@ -295,23 +295,45 @@ class CompositeValue(TypeValue):
 class OpaqueValue(CompositeValue):
 
     _value: bytes
+    _nested_message: Optional["MessageValue"]
 
     def __init__(self, vtype: Opaque) -> None:
         super().__init__(vtype)
+        self._refinement = None
+        self._all_refinements_from_parent = []
 
     def assign(self, value: bytes, check: bool = True) -> None:
-        self._check_length_of_assigned_value(value)
-        self._value = value
+        self.parse(value)
 
     def parse(self, value: Union[Bitstring, bytes]) -> None:
         self._check_length_of_assigned_value(value)
-        self._value = bytes(value)
+        if self._refinement is not None:
+            self._create_nested_msg(value)
+        else:
+            self._value = bytes(value)
+
+    def _create_nested_msg(self, value: Union[Bitstring, bytes]) -> None:
+        nested_msg = MessageValue(self._refinement, self._all_refinements_from_parent)
+        nested_msg.parse(value)
+        if not nested_msg.valid_message:
+            raise ValueError(f"Nested message {nested_msg.name} is not valid")
+        self._nested_message = nested_msg
+        self._value = nested_msg.bytestring
+
+    def set_refinement(self, refinement_model: Message, all_refinements_from_parent: Sequence[Refinement]) -> None:
+        self._refinement = refinement_model
+        self._all_refinements_from_parent = all_refinements_from_parent
 
     @property
     def size(self) -> Expr:
         if self._value is None:
             return self._expected_size if self._expected_size is not None else UNDEFINED
         return Number(len(self._value) * 8)
+
+    @property
+    def nested_message(self) -> "MessageValue":
+        self._raise_initialized()
+        return self._nested_message
 
     @property
     def value(self) -> bytes:
@@ -439,9 +461,10 @@ class ArrayValue(CompositeValue):
 
 
 class MessageValue(TypeValue):
-    def __init__(self, message_model: Message) -> None:
+    def __init__(self, message_model: Message, message_refinements: Sequence[Refinement]) -> None:
         super().__init__(message_model)
         self._model = message_model
+        self._refinements: Dict[str, Refinement] = { r.pdu.name: r for r in message_refinements }
         self._fields: Dict[str, MessageValue.Field] = {
             f.name: self.Field(TypeValue.construct(self._model.types[f]))
             for f in self._model.fields
@@ -458,7 +481,7 @@ class MessageValue(TypeValue):
         self._preset_fields(INITIAL.name)
 
     def __copy__(self) -> "MessageValue":
-        return MessageValue(self._model)
+        return MessageValue(self._model, list(self._refinements.values()))
 
     def __repr__(self) -> str:
         return generic_repr(self.__class__.__name__, self.__dict__)
@@ -467,6 +490,9 @@ class MessageValue(TypeValue):
         if isinstance(other, self.__class__):
             return self._fields == other._fields and self._model == other._model
         return NotImplemented
+
+    def _valid_refinement_condition(self, refinement: Refinement) -> bool:
+        return bool(self.__simplified(refinement.condition) == TRUE)
 
     def equal_model(self, other: Message) -> bool:
         return self.name == other.name
@@ -633,16 +659,31 @@ class MessageValue(TypeValue):
             current_field_name = self._next_field(current_field_name)
 
     def set(self, fld: str, value: Union[bytes, int, str, Sequence[TypeValue], Bitstring]) -> None:
+
+        def get_refinement() -> Optional[Message]:
+            for name, ref in self._refinements.items():
+                if name == self.name and ref.field.name == fld and self._valid_refinement_condition(ref):
+                    return ref.sdu
+            return None
+
         if fld in self.accessible_fields:
             field = self._fields[fld]
             field.first = self._get_first(fld)
             if isinstance(value, Bitstring):
                 if isinstance(field.typeval, CompositeValue) and self._has_length(fld):
                     field.typeval.set_expected_size(self._get_length(fld))
+                if isinstance(field.typeval, OpaqueValue):
+                    refinement = get_refinement()
+                    if refinement is not None:
+                        field.typeval.set_refinement(refinement, list(self._refinements.values()))
                 field.typeval.parse(value)
             elif isinstance(value, field.typeval.accepted_type):
                 if isinstance(field.typeval, CompositeValue) and self._has_length(fld):
                     field.typeval.set_expected_size(self._get_length(fld))
+                if isinstance(field.typeval, OpaqueValue):
+                    refinement = get_refinement()
+                    if refinement is not None:
+                        field.typeval.set_refinement(refinement, list(self._refinements.values()))
                 field.typeval.assign(value)
             else:
                 raise TypeError(

@@ -25,7 +25,11 @@ class PyRFLX:
             self.__packages[p] = Package(p)
             for m in [x for x in model.messages if x.package == p]:
                 try:
-                    self.__packages[p][m.name] = MessageValue(m)
+                    msg_refinements = [r for r in model.refinements if r.pdu.full_name == m.full_name]
+                    for ref in msg_refinements:
+                        msg_refinements += [r for r in model.refinements if r.pdu.full_name == ref.sdu.full_name]
+
+                    self.__packages[p][m.name] = MessageValue(m, msg_refinements)
                 except ValueError as e:
                     log.warning("Ignoring message %s: %s", m.name, e)
 
