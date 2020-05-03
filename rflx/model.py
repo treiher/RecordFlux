@@ -523,7 +523,7 @@ class AbstractMessage(Type):
                 for n, t in [
                     (v.name, self.types[Field(v.identifier)])
                     for v in expr.variables()
-                    if v.name not in [*literals, "Message"]
+                    if v.name not in [*literals, "Message", "Final"]
                 ]
                 if isinstance(t, Scalar)
             ]
@@ -564,7 +564,7 @@ class AbstractMessage(Type):
         for f in (*self.__fields, FINAL):
             reachability = Or(
                 *[
-                    And(*[self.__with_constraints(l.condition) for l in path])
+                    And(*[self.__with_constraints(self.__link_expression(l)) for l in path])
                     for path in self.__paths[f]
                 ]
             )

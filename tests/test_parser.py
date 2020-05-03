@@ -744,14 +744,14 @@ class TestParser(unittest.TestCase):  # pylint: disable=too-many-public-methods
                                             UNDEFINED,
                                             UNDEFINED,
                                             And(
-                                                Equal(Length("Foo"), Number(1)),
+                                                Equal(Length("Foo"), Number(8)),
                                                 LessEqual(Variable("Foo"), Number(30, 16)),
                                             ),
                                         ),
                                         Then(
                                             "Baz",
                                             condition=And(
-                                                Equal(Length("Foo"), Number(1)),
+                                                Equal(Length("Foo"), Number(8)),
                                                 Greater(Variable("Foo"), Number(30, 16)),
                                             ),
                                         ),
@@ -791,12 +791,12 @@ class TestParser(unittest.TestCase):  # pylint: disable=too-many-public-methods
             Link(
                 Field("Foo"),
                 Field("Bar"),
-                And(Equal(Length("Foo"), Number(1)), LessEqual(Variable("Foo"), Number(30, 16)),),
+                And(Equal(Length("Foo"), Number(8)), LessEqual(Variable("Foo"), Number(30, 16)),),
             ),
             Link(
                 Field("Foo"),
                 Field("Baz"),
-                And(Equal(Length("Foo"), Number(1)), Greater(Variable("Foo"), Number(30, 16)),),
+                And(Equal(Length("Foo"), Number(8)), Greater(Variable("Foo"), Number(30, 16)),),
             ),
             Link(Field("Bar"), Field("Baz")),
             Link(Field("Baz"), FINAL),
@@ -876,14 +876,14 @@ class TestParser(unittest.TestCase):  # pylint: disable=too-many-public-methods
                                             UNDEFINED,
                                             UNDEFINED,
                                             And(
-                                                Equal(Length("Foo"), Number(1)),
+                                                Equal(Length("Foo"), Number(8)),
                                                 LessEqual(Variable("Foo"), Number(30, 16)),
                                             ),
                                         ),
                                         Then(
                                             "Baz",
                                             condition=And(
-                                                Equal(Length("Foo"), Number(1)),
+                                                Equal(Length("Foo"), Number(8)),
                                                 Greater(Variable("Foo"), Number(30, 16)),
                                             ),
                                         ),

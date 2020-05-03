@@ -614,3 +614,156 @@ class TestVerification(TestCase):
         }
         with self.assertRaisesRegex(ModelError, '^no path to FINAL for field "F4"'):
             Message("P.M", structure, types)
+
+    def test_conditionally_unreachable_field_mod_length(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is mod 256;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Length = 1 and F1 <= 16#1E#;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_mod_first(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is mod 256;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'First > Message'First;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_mod_last(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is mod 256;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Last = Message'Last;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_range_length(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is range 1 .. 100 with Size => 16;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Length = 8 and F1 <= 20;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_range_first(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is range 1 .. 100 with Size => 16;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'First > Message'First;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_range_last(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is range 1 .. 100 with Size => 16;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Last = Message'Last;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_enum_length(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is (ONE, TWO) with Size => 4;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Length = 8;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_enum_first(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is (ONE, TWO) with Size => 4;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'First > Message'First;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
+
+    def test_conditionally_unreachable_field_enum_last(self) -> None:
+        self.assert_model_error(
+            """
+            package Foo is
+               type T is (ONE, TWO) with Size => 4;
+               type Bar is
+                  message
+                     F1 : T
+                        then F2
+                           if F1'Last = Message'Last;
+                     F2 : T;
+                  end message;
+            end Foo;
+            """,
+            r'^unreachable field "F2" in "Foo.Bar"',
+        )
