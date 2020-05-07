@@ -11,7 +11,7 @@ package TLS_Heartbeat is
                with Length => Payload_Length * 8;
          Payload : Opaque
             then Padding
-               with Length => Message'Length - Payload_Length * 8 - 24;
+               with Length => Message'Length - Payload'Length - 24;
          Padding : Opaque
             then null
                if Message'Length / 8 <= 2**14 and Padding'Length / 8 >= 16;
