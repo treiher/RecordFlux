@@ -93,7 +93,7 @@ class FSMParser:
     @classmethod
     def __parse_conversion(cls, tokens: List[Expr]) -> Expr:
         if not isinstance(tokens[0], Variable):
-            raise TypeError(f"target not of type Variable")
+            raise TypeError("target not of type Variable")
         return Conversion(tokens[0], tokens[1])
 
     @classmethod

@@ -74,7 +74,7 @@ def main(argv: List[str]) -> Union[int, str]:
         "--format",
         type=str,
         choices=["dot", "jpg", "pdf", "png", "raw", "svg"],
-        help=(f"output graph with specified format"),
+        help=("output graph with specified format"),
     )
     parser_fsm.set_defaults(func=fsm)
 
