@@ -3,7 +3,8 @@ import unittest
 from tempfile import TemporaryDirectory
 from typing import List
 
-from rflx.expression import UNDEFINED
+from rflx import model
+from rflx.expression import UNDEFINED, First, Last, Length, Sub, ValueRange, Variable
 from rflx.identifier import ID
 from rflx.model import (
     FINAL,
@@ -53,46 +54,48 @@ class TestPyRFLX(unittest.TestCase):
         cls.specdir = "specs"
         pyrflx = PyRFLX(
             [
-                f"{cls.testdir}/tlv_with_checksum.rflx",
-                f"{cls.specdir}/ethernet.rflx",
-                f"{cls.specdir}/tls_record.rflx",
-                f"{cls.specdir}/tls_alert.rflx",
+                #    f"{cls.testdir}/tlv_with_checksum.rflx",
+                #    f"{cls.specdir}/ethernet.rflx",
+                #    f"{cls.specdir}/tls_record.rflx",
+                #    f"{cls.specdir}/tls_alert.rflx",
                 f"{cls.specdir}/icmp.rflx",
-                f"{cls.testdir}/test_odd_length.rflx",
-                f"{cls.specdir}/ipv4.rflx",
-                f"{cls.testdir}/array_message.rflx",
-                f"{cls.testdir}/array_type.rflx",
-                f"{cls.specdir}/udp.rflx",
-                f"{cls.specdir}/tlv.rflx",
-                f"{cls.specdir}/in_ethernet.rflx",
-                f"{cls.specdir}/in_ipv4.rflx",
+                #    f"{cls.testdir}/test_odd_length.rflx",
+                #    f"{cls.specdir}/ipv4.rflx",
+                #    f"{cls.testdir}/array_message.rflx",
+                #    f"{cls.testdir}/array_type.rflx",
+                #    f"{cls.specdir}/udp.rflx",
+                #    f"{cls.specdir}/tlv.rflx",
+                #    f"{cls.specdir}/in_ethernet.rflx",
+                #    f"{cls.specdir}/in_ipv4.rflx",
             ]
         )
-        cls.package_tlv_checksum = pyrflx["TLV_With_Checksum"]
-        cls.package_ethernet = pyrflx["Ethernet"]
-        cls.package_tls_record = pyrflx["TLS_Record"]
-        cls.package_tls_alert = pyrflx["TLS_Alert"]
+        # cls.package_tlv_checksum = pyrflx["TLV_With_Checksum"]
+        # cls.package_ethernet = pyrflx["Ethernet"]
+        # cls.package_tls_record = pyrflx["TLS_Record"]
+        # cls.package_tls_alert = pyrflx["TLS_Alert"]
         cls.package_icmp = pyrflx["ICMP"]
-        cls.package_test_odd_length = pyrflx["Test_Odd_Length"]
-        cls.package_ipv4 = pyrflx["IPv4"]
-        cls.package_array_nested_msg = pyrflx["Array_Message"]
-        cls.package_array_typevalue = pyrflx["Array_Type"]
-        cls.package_udp = pyrflx["UDP"]
-        cls.package_tlv = pyrflx["TLV"]
+
+    # cls.package_test_odd_length = pyrflx["Test_Odd_Length"]
+    # cls.package_ipv4 = pyrflx["IPv4"]
+    # cls.package_array_nested_msg = pyrflx["Array_Message"]
+    # cls.package_array_typevalue = pyrflx["Array_Type"]
+    # cls.package_udp = pyrflx["UDP"]
+    # cls.package_tlv = pyrflx["TLV"]
 
     def setUp(self) -> None:
-        self.tlv_checksum = self.package_tlv_checksum["Message"]
-        self.tlv = self.package_tlv["Message"]
-        self.frame = self.package_ethernet["Frame"]
-        self.record = self.package_tls_record["TLS_Record"]
-        self.alert = self.package_tls_alert["Alert"]
+        # self.tlv_checksum = self.package_tlv_checksum["Message"]
+        # self.tlv = self.package_tlv["Message"]
+        # self.frame = self.package_ethernet["Frame"]
+        # self.record = self.package_tls_record["TLS_Record"]
+        # self.alert = self.package_tls_alert["Alert"]
         self.icmp = self.package_icmp["Echo_Message"]
-        self.odd_length = self.package_test_odd_length["Test"]
-        self.ipv4 = self.package_ipv4["Packet"]
-        self.ipv4_option = self.package_ipv4["Option"]
-        self.array_test_nested_msg = self.package_array_nested_msg["Message"]
-        self.array_test_typeval = self.package_array_typevalue["Foo"]
-        self.udp = self.package_udp["Datagram"]
+
+    # self.odd_length = self.package_test_odd_length["Test"]
+    # self.ipv4 = self.package_ipv4["Packet"]
+    # self.ipv4_option = self.package_ipv4["Option"]
+    # self.array_test_nested_msg = self.package_array_nested_msg["Message"]
+    # self.array_test_typeval = self.package_array_typevalue["Foo"]
+    # self.udp = self.package_udp["Datagram"]
 
     def test_file_not_found(self) -> None:
         with self.assertRaises(FileNotFoundError):
@@ -1155,3 +1158,66 @@ class TestPyRFLX(unittest.TestCase):
         self.tlv.set("Tag", "Msg_Error")
         self.assertTrue(self.tlv.valid_message)
         self.assertEqual(self.tlv.bytestring, b"\xc0")
+
+    def test_aspect_checksum(self) -> None:
+        def checksum_icmp(message: bytes, **kwargs) -> int:
+            def add_ones_complement(num1, num2) -> int:
+                MOD = 1 << 16
+                result = num1 + num2
+                return result if result < MOD else (result + 1) % MOD
+
+            c_f = kwargs.get("Checksum'First", None)
+            c_l = kwargs.get("Checksum'Last", None)
+            if c_l and c_f:
+                checksum_bytes = message[: (c_f // 8)] + b"\x00\x00" + message[((c_l + 1) // 8) :]
+            else:
+                checksum_bytes = message
+
+            message_in_sixteen_bit_chunks = [
+                int.from_bytes(checksum_bytes[i : i + 2], "big")
+                for i in range(0, len(checksum_bytes), 2)
+            ]
+            intermediary_result = message_in_sixteen_bit_chunks[0]
+            for i in range(1, len(message_in_sixteen_bit_chunks)):
+                intermediary_result = add_ones_complement(
+                    intermediary_result, message_in_sixteen_bit_chunks[i]
+                )
+
+            return intermediary_result ^ 0xFFFF
+
+        test_data = (
+            b"\x47\xb4\x67\x5e\x00\x00\x00\x00"
+            b"\x4a\xfc\x0d\x00\x00\x00\x00\x00\x10\x11\x12\x13\x14\x15\x16\x17"
+            b"\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27"
+            b"\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37"
+        )
+
+        icmp_type = self.icmp._type
+        icmp_type.aspects = {
+            "Checksum": [
+                {
+                    "Checksum": [
+                        ValueRange(First("Identifier"), Sub(First("Data"), Number(1))),
+                        Variable("Data"),
+                        First("Checksum"),
+                        Last("Checksum"),
+                    ]
+                }
+            ]
+        }
+        icmp_checksum = MessageValue(icmp_type)
+        icmp_checksum.set_checksum_function(checksum_icmp)
+
+        icmp_checksum.set("Tag", "Echo_Request")
+        icmp_checksum.set("Code", 0)
+        # 12824
+        icmp_checksum.set("Checksum", 12824)
+        icmp_checksum.set("Identifier", 5)
+        icmp_checksum.set("Sequence_Number", 1)
+        icmp_checksum.set(
+            "Data", test_data,
+        )
+
+        print(f"after message {checksum_icmp(icmp_checksum.bytestring)}")
+        # self.assertEqual(icmp_checksum.bytestring, b"\x08\x00\x32\x18\x00\x05\x00\x01" + test_data)
+        # self.assertTrue(icmp_checksum.valid_message)

@@ -2,7 +2,7 @@
 import itertools
 from abc import ABC, abstractmethod
 from copy import copy
-from typing import Dict, List, Mapping, NamedTuple, Sequence, Set, Tuple
+from typing import Dict, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
 from rflx.common import flat_name, generic_repr
 from rflx.expression import (
@@ -271,12 +271,17 @@ class Link(NamedTuple):
 
 class AbstractMessage(Type):
     def __init__(
-        self, identifier: StrID, structure: Sequence[Link], types: Mapping[Field, Type]
+        self,
+        identifier: StrID,
+        structure: Sequence[Link],
+        types: Mapping[Field, Type],
+        aspects: Mapping[str, Sequence[Mapping[str, Sequence[Expr]]]] = None,
     ) -> None:
         super().__init__(identifier)
 
         self.structure = structure
         self.__types = types
+        self.aspects = aspects or {}
 
         if structure or types:
             self.__verify()
