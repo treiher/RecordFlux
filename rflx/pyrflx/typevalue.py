@@ -1,5 +1,6 @@
 import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from rflx import model
@@ -472,16 +473,14 @@ class MessageValue(TypeValue):
             f.name: self.Field(TypeValue.construct(self._type.types[f])) for f in self._type.fields
         }
 
-
         self._aspects = self._type.aspects
         if "Checksum" in self._aspects.keys():
             for d in [*self._aspects["Checksum"]]:
                 self._checksum_fields = [k for k, v in d.items()]
         else:
             self._checksum_fields = []
-        self.checksum_expressions = self._create_checksum_dict()
-        self.checksum_dependant_fields = self._create_checksum_dependant_fields_list()
 
+        self.checksum_expressions_fields_mapping = self._create_checksum_dependant_fields_list()
 
         self.__type_literals: Mapping[Name, Expr] = {}
         self._last_field: str = self._next_field(INITIAL.name)
@@ -708,7 +707,7 @@ class MessageValue(TypeValue):
             )
 
         self._preset_fields(field_name)
-        self._update_checksum_fields()
+        self._update_checksum_fields(field_name)
 
     def _preset_fields(self, fld: str) -> None:
         nxt = self._next_field(fld)
@@ -732,15 +731,21 @@ class MessageValue(TypeValue):
     def set_checksum_function(self, checksum_method: callable) -> None:
         self._checksum_function = checksum_method
 
-    def _create_checksum_dependant_fields_list(self) -> List[str]:
+    def _create_checksum_dependant_fields_list(self) -> List["MessageValue.ChecksumFieldMapping"]:
+        # returnt zu jeder Expression eine Liste von Feldern, von der die Expr. abhängt
         # ValueRanges(F2'First .. (F3'First -1 oder F3'Last))
         # Variable -> das benannte Feld
         # Length -> das benannte Feld
         # Annahme -> self.fields ist topologisch sortiert
 
-        checksum_dependant_fields: List[str] = []
-        for key, expr in self.checksum_expressions.items():
+        expressions = Sequence[Expr]
+        if not self._checksum_fields:
+            return []
+        for i in range(len(self._checksum_fields)):
+            expressions = self._aspects["Checksum"][i][self._checksum_fields[i]]
 
+        checksum_expressions_fields: [MessageValue.ChecksumFieldMapping] = []
+        for expr in expressions:
             if isinstance(expr, ValueRange):
                 assert isinstance(expr.lower, First)
                 included_first_field_of_range = str(expr.lower.prefix)
@@ -760,44 +765,48 @@ class MessageValue(TypeValue):
                             excluded_last_field_of_range
                         )
                     ]
-                checksum_dependant_fields.extend(pre)
+                checksum_expressions_fields.append(MessageValue.ChecksumFieldMapping(expr, pre))
             elif isinstance(expr, Variable):
                 if expr.name in self.fields:
-                    checksum_dependant_fields.append(expr.name)
+                    checksum_expressions_fields.append(
+                        MessageValue.ChecksumFieldMapping(expr, [expr.name])
+                    )
             elif isinstance(expr, Attribute):
                 if str(expr.prefix) in self.fields:
-                    checksum_dependant_fields.append(str(expr.prefix))
+                    checksum_expressions_fields.append(
+                        MessageValue.ChecksumFieldMapping(expr, [str(expr.prefix)])
+                    )
+        return checksum_expressions_fields
 
-        return checksum_dependant_fields
-
-    def _create_checksum_dict(self) -> Mapping[str, Expr]:
-        field_expressions = Sequence[Expr]
-        for i in range(len(self._checksum_fields)):
-            field_expressions = self._aspects["Checksum"][i][self._checksum_fields[i]]
-        return dict(zip([str(f) for f in field_expressions], field_expressions))
-
-    def _update_checksum_fields(self) -> None:
-
-        # try to evaluate the checksum expressions
-        for key, expr in self.checksum_expressions.items():
-            self.checksum_expressions[key] = self.__simplified(expr)
+    def _update_checksum_fields(self, field_name: str) -> None:
+        # try to evaluate the checksum expressions if a dependant field has changed
+        for mapping in self.checksum_expressions_fields_mapping:
+            if field_name in mapping.dependant_fields:
+                mapping.evaluated_expression = self.__simplified(copy.copy(mapping.expression))
 
         # if the expressions can be evaluated to numbers, pass them as arguments to
         # the checksum function
-        arguments = {}
-        for key, expr in self.checksum_expressions.items():
-
+        arguments: Dict[str, Union[int, Tuple[int, int]]] = {}
+        for mapping in self.checksum_expressions_fields_mapping:
             if (
-                isinstance(expr, ValueRange)
-                and isinstance(expr.lower, Number)
-                and isinstance(expr.upper, Number)
+                isinstance(mapping.evaluated_expression, ValueRange)
+                and isinstance(mapping.evaluated_expression.lower, Number)
+                and isinstance(mapping.evaluated_expression.upper, Number)
             ):
-                arguments[key] = (expr.lower.value, expr.upper.value)
-            elif isinstance(expr, Variable):
-                if expr.name in self.fields and self._fields[expr.name].set:
-                    arguments[key] = self._fields[expr.name].typeval.value
-            elif isinstance(expr, Number):
-                arguments[key] = expr.value
+                arguments[str(mapping.expression)] = (
+                    mapping.evaluated_expression.lower.value,
+                    mapping.evaluated_expression.upper.value,
+                )
+            elif isinstance(mapping.evaluated_expression, Variable):
+                if (
+                    mapping.evaluated_expression.name in self.fields
+                    and self._fields[mapping.evaluated_expression.name].set
+                ):
+                    arguments[str(mapping.expression)] = self._fields[
+                        mapping.evaluated_expression.name
+                    ].typeval.value
+            elif isinstance(mapping.evaluated_expression, Number):
+                arguments[str(mapping.expression)] = mapping.evaluated_expression.value
 
         print(f"update {self._checksum_function(self.bytestring, **arguments)}")
 
@@ -930,6 +939,15 @@ class MessageValue(TypeValue):
             return expr.simplified()
 
         return expr.substituted(mapping=mapping).substituted(mapping=mapping).simplified()
+
+    @dataclass
+    class ChecksumFieldMapping:
+        def __init__(self, expression: Expr, dependant_fields: List[str]):
+            self.expression = expression
+            self.evaluated_expression = expression
+            self.dependant_fields = tuple(dependant_fields)
+            # if multiple checksum_fields (checksums) -> save here to which checksum function
+            # this mapping belongs
 
     class Field:
         def __init__(self, t: TypeValue):
