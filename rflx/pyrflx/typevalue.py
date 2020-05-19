@@ -474,13 +474,15 @@ class MessageValue(TypeValue):
         }
 
         self._aspects = self._type.aspects
+
+        # ToDo Mapping[ChecksumField: str, ChecksumFunction: callable)
         if "Checksum" in self._aspects.keys():
             for d in [*self._aspects["Checksum"]]:
                 self._checksum_fields = [k for k, v in d.items()]
         else:
             self._checksum_fields = []
 
-        self.checksum_expressions_fields_mapping = self._create_checksum_dependant_fields_list()
+        self.checksum_expressions_fields_mapping = self._create_expr_fields_mapping()
 
         self.__type_literals: Mapping[Name, Expr] = {}
         self._last_field: str = self._next_field(INITIAL.name)
@@ -729,13 +731,11 @@ class MessageValue(TypeValue):
             nxt = self._next_field(nxt)
 
     def set_checksum_function(self, checksum_method: callable) -> None:
+        # ToDo support different functions for multiple checksum fields
         self._checksum_function = checksum_method
 
-    def _create_checksum_dependant_fields_list(self) -> List["MessageValue.ChecksumFieldMapping"]:
-        # returnt zu jeder Expression eine Liste von Feldern, von der die Expr. abhängt
-        # ValueRanges(F2'First .. (F3'First -1 oder F3'Last))
-        # Variable -> das benannte Feld
-        # Length -> das benannte Feld
+    def _create_expr_fields_mapping(self) -> List["MessageValue.ExprFieldsMapping"]:
+        # returnt zu jeder Expression eine Liste von Feldern, auf welche sich die Expr bezieht
         # Annahme -> self.fields ist topologisch sortiert
 
         expressions = Sequence[Expr]
@@ -744,7 +744,7 @@ class MessageValue(TypeValue):
         for i in range(len(self._checksum_fields)):
             expressions = self._aspects["Checksum"][i][self._checksum_fields[i]]
 
-        checksum_expressions_fields: [MessageValue.ChecksumFieldMapping] = []
+        checksum_expressions_fields: [MessageValue.ExprFieldsMapping] = []
         for expr in expressions:
             if isinstance(expr, ValueRange):
                 assert isinstance(expr.lower, First)
@@ -765,16 +765,16 @@ class MessageValue(TypeValue):
                             excluded_last_field_of_range
                         )
                     ]
-                checksum_expressions_fields.append(MessageValue.ChecksumFieldMapping(expr, pre))
+                checksum_expressions_fields.append(MessageValue.ExprFieldsMapping(expr, pre))
             elif isinstance(expr, Variable):
                 if expr.name in self.fields:
                     checksum_expressions_fields.append(
-                        MessageValue.ChecksumFieldMapping(expr, [expr.name])
+                        MessageValue.ExprFieldsMapping(expr, [expr.name])
                     )
             elif isinstance(expr, Attribute):
                 if str(expr.prefix) in self.fields:
                     checksum_expressions_fields.append(
-                        MessageValue.ChecksumFieldMapping(expr, [str(expr.prefix)])
+                        MessageValue.ExprFieldsMapping(expr, [str(expr.prefix)])
                     )
         return checksum_expressions_fields
 
@@ -941,7 +941,7 @@ class MessageValue(TypeValue):
         return expr.substituted(mapping=mapping).substituted(mapping=mapping).simplified()
 
     @dataclass
-    class ChecksumFieldMapping:
+    class ExprFieldsMapping:
         def __init__(self, expression: Expr, dependant_fields: List[str]):
             self.expression = expression
             self.evaluated_expression = expression

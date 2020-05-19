@@ -1210,7 +1210,7 @@ class TestPyRFLX(unittest.TestCase):
 
         icmp_checksum.set("Tag", "Echo_Request")
         icmp_checksum.set("Code", 0)
-        # 12824
+        # 12824 = correct checksum
         icmp_checksum.set("Checksum", 12824)
         icmp_checksum.set("Identifier", 5)
         icmp_checksum.set("Sequence_Number", 1)
