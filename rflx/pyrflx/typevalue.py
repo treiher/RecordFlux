@@ -737,6 +737,18 @@ class MessageValue(TypeValue):
     def _create_expr_fields_mapping(self) -> List["MessageValue.ExprFieldsMapping"]:
         # returnt zu jeder Expression eine Liste von Feldern, auf welche sich die Expr bezieht
         # Annahme -> self.fields ist topologisch sortiert
+        """
+        Annahme -> Wenn die (ausgewerteten) Expressions des
+        Checksum-Aspects nur an die Checksum-Funktion übergeben werden und die konkrete Gestaltung
+        der Funktion allein dem User überlassen wird, könnte dieser in der Spec auch anstatt der
+        Felder (Ranges/Attribute), über welche die Checksum berechnet wird, Argumente übergeben,
+        welche Felder ausgeschlossen werden (oder z.B. First und Last des Checksum-Feldes selbst,
+        wenn das auf 00 gesetzt wird und sonst die gesamte Nachricht in die Brechnung eingeht).
+        Demnach wäre es nicht möglich zu bestimmen, welche Felder der Nachricht in die
+        Checksum-Berechnung eingehen sondern nur, auf welche Felder sich eine Expression bezieht.
+        Somit muss die Checksum nach dem Setzen jedes Feldes berechnet werden.
+        :return:
+        """
 
         expressions = Sequence[Expr]
         if not self._checksum_fields:
