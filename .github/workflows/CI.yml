@@ -180,6 +180,7 @@ jobs:
       matrix:
         target: [
           "spark",
+          "spark_cvc4",
           ]
         type: ["clean"]
         include:
@@ -214,6 +215,7 @@ jobs:
       matrix:
         target: [
           "spark",
+          "spark_cvc4",
           ]
         type: ["cached"]
     steps:
