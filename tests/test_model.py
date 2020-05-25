@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import pytest
 
+from rflx.error import RecordFluxError
 from rflx.expression import (
     TRUE,
     Add,
@@ -175,7 +176,7 @@ def test_modular_invalid_modulus_variable() -> None:
 
 def test_modular_invalid_modulus_limit() -> None:
     # ISSUE: Componolit/RecordFlux#238
-    with pytest.raises(ModelError, match=r'^modulus of "T" exceeds limit \(2\*\*57\)$'):
+    with pytest.raises(RecordFluxError, match=r'^model: error: modulus exceeds limit \(2\*\*57\)$'):
         ModularInteger("P.T", Pow(Number(2), Number(128)))
 
 
@@ -212,7 +213,7 @@ def test_range_invalid_size_variable() -> None:
 
 
 def test_range_invalid_size_too_small() -> None:
-    with pytest.raises(ModelError, match=r'^size for "T" too small$'):
+    with pytest.raises(ModelError, match=r'^size too small$'):
         RangeInteger("P.T", Number(0), Number(256), Number(8))
 
 
@@ -228,7 +229,7 @@ def test_enumeration_invalid_size_variable() -> None:
 
 
 def test_enumeration_invalid_size_too_small() -> None:
-    with pytest.raises(ModelError, match=r'^size for "T" too small$'):
+    with pytest.raises(RecordFluxError, match=r'^model: error: size too small$'):
         Enumeration("P.T", {"A": Number(256)}, Number(8), False)
 
 
