@@ -305,12 +305,7 @@ def test_unexpected_exception_in_parser(monkeypatch: Any) -> None:
 def test_package_spec() -> None:
     assert_specifications_files(
         [f"{TESTDIR}/empty_package.rflx"],
-        {
-            "Empty_Package": Specification(
-                ContextSpec([]),
-                PackageSpec("Empty_Package", []),
-            )
-        },
+        {"Empty_Package": Specification(ContextSpec([]), PackageSpec("Empty_Package", []),)},
     )
 
 
@@ -321,13 +316,7 @@ def test_package_message() -> None:
 def test_duplicate_specifications() -> None:
     files = [f"{TESTDIR}/empty_package.rflx", f"{TESTDIR}/empty_package.rflx"]
     assert_specifications_files(
-        files,
-        {
-            "Empty_Package": Specification(
-                ContextSpec([]),
-                PackageSpec("Empty_Package", []),
-            )
-        },
+        files, {"Empty_Package": Specification(ContextSpec([]), PackageSpec("Empty_Package", []),)},
     )
     assert_messages_files(files, [])
 
@@ -337,13 +326,9 @@ def test_context_spec() -> None:
         [f"{TESTDIR}/context.rflx"],
         {
             "Context": Specification(
-                ContextSpec(["Empty_File", "Empty_Package"]),
-                PackageSpec("Context", []),
+                ContextSpec(["Empty_File", "Empty_Package"]), PackageSpec("Context", []),
             ),
-            "Empty_Package": Specification(
-                ContextSpec([]),
-                PackageSpec("Empty_Package", []),
-            ),
+            "Empty_Package": Specification(ContextSpec([]), PackageSpec("Empty_Package", []),),
         },
     )
 
@@ -442,7 +427,7 @@ def test_invalid_modular_type() -> None:
                type T is mod 2**128;
             end Test;
         """,
-        r"^<stdin>:3:30: model: error: modulus exceeds limit \(2\*\*57\)",
+        r"^<stdin>:3:16: model: error: modulus exceeds limit \(2\*\*57\)",
     )
 
 
@@ -453,7 +438,7 @@ def test_invalid_enumeration_type_size() -> None:
                type T is (Foo, Bar, Baz) with Size => 1;
             end Test;
         """,
-        r"<stdin>:3:55: model: error: size too small",
+        r"<stdin>:3:16: model: error: size too small",
     )
 
 
