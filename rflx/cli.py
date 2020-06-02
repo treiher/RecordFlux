@@ -47,6 +47,12 @@ def main(argv: List[str]) -> Union[int, str]:
         "-d", "--directory", help="output directory", default=".", type=str
     )
     parser_generate.add_argument(
+        "-t",
+        "--generate-top-level-package",
+        help="generate a top level package even if -p is used",
+        action="store_true",
+    )
+    parser_generate.add_argument(
         "files", metavar="FILE", type=str, nargs="*", help="specification file"
     )
     parser_generate.set_defaults(func=generate)
@@ -112,7 +118,7 @@ def generate(args: argparse.Namespace) -> None:
 
     generator.write_units(directory)
     generator.write_library_files(directory)
-    if args.prefix == DEFAULT_PREFIX:
+    if args.prefix == DEFAULT_PREFIX or args.generate_top_level_package:
         generator.write_top_level_package(directory)
 
 
