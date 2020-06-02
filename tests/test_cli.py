@@ -64,6 +64,18 @@ def test_main_generate_prefix(tmp_path: Path) -> None:
         assert not top_level_package.exists()
 
 
+def test_main_generate_prefix_with_top_level(tmp_path: Path) -> None:
+    for prefix in ["A", "A.B", "A.B.C"]:
+        assert (
+            cli.main(
+                ["rflx", "generate", "-d", str(tmp_path), "-p", prefix, "specs/tlv.rflx", "-t"]
+            )
+            == 0
+        )
+        top_level_package = Path(tmp_path) / (prefix.replace(".", "-").lower() + ".ads")
+        assert top_level_package.exists()
+
+
 def test_main_generate_invalid_prefix(tmp_path: Path) -> None:
     for prefix in [".", "A.B.", ".A.B", "A..B"]:
         assert rf'invalid prefix: "{prefix}"' in str(
