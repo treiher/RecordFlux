@@ -175,14 +175,14 @@ class Generator:
             self.__check_template_file(template_filename)
 
             prefix = file_name(self.prefix)
-            filename = f"{prefix}-{template_filename}"
+            filename = f"{prefix}-{template_filename}" if prefix else template_filename
 
             with open(self.template_dir / Path(template_filename)) as template_file:
                 create_file(
                     Path(directory) / Path(filename),
                     self.__license_header()
                     + "".join(
-                        l.format(prefix=f"{self.prefix}.")
+                        l.format(prefix=f"{self.prefix}." if self.prefix else "")
                         for l in template_file
                         if "  --  WORKAROUND" not in l
                     ),
