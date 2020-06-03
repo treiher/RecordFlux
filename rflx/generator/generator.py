@@ -261,13 +261,11 @@ class GeneratorGenerator:
                                         Variable("Ctx"),
                                         Aggregate(
                                             Variable(f.affixed_name),
-                                            Variable("Val")
-                                            if not isinstance(t, Enumeration)
-                                            else Call("To_Base", [Variable("Val")]),
+                                            Call("To_Base", [Variable("Val")]),
                                         ),
                                     ],
                                 ),
-                                Call("Valid", [Variable("Val")])
+                                Call("Valid", [Call("To_Base", [Variable("Val")])])
                                 if not isinstance(t, Enumeration)
                                 else TRUE,
                                 common.sufficient_space_for_field_condition(
@@ -315,10 +313,7 @@ class GeneratorGenerator:
                             ["Field_Value"],
                             "Field_Dependent_Value",
                             Aggregate(
-                                Variable(f.affixed_name),
-                                Variable("Val")
-                                if not isinstance(t, Enumeration)
-                                else Call("To_Base", [Variable("Val")]),
+                                Variable(f.affixed_name), Call("To_Base", [Variable("Val")]),
                             ),
                             True,
                         ),
