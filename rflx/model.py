@@ -634,7 +634,7 @@ class AbstractMessage(Type):
                     f' to "{links[0].target.identifier}"',
                     Subsystem.MODEL,
                     Severity.ERROR,
-                    self.location,
+                    links[0].source.identifier.location,
                 )
                 self.error.extend(
                     [
