@@ -681,7 +681,7 @@ class AbstractMessage(Type):
                     message = f'subsequent field "{v}" referenced'
                 else:
                     message = f'undefined variable "{v}" referenced'
-                self.error.append(message, Subsystem.MODEL, Severity.ERROR, location)
+                self.error.append(message, Subsystem.MODEL, Severity.ERROR, location or v.location)
 
     def __check_attributes(self, expression: Expr, location: Location = None) -> None:
         for a in expression.findall(lambda x: isinstance(x, Attribute)):
@@ -953,7 +953,7 @@ class AbstractMessage(Type):
             return First("Message")
         if link.first != UNDEFINED:
             return link.first
-        return Add(Last(link.source.name), Number(1))
+        return Add(Last(link.source.name), Number(1), link.location)
 
     def __target_length(self, link: Link) -> Expr:
         if link.length != UNDEFINED:
@@ -961,7 +961,11 @@ class AbstractMessage(Type):
         return self.field_size(link.target)
 
     def __target_last(self, link: Link) -> Expr:
-        return Sub(Add(self.__target_first(link), self.__target_length(link)), Number(1))
+        return Sub(
+            Add(self.__target_first(link), self.__target_length(link)),
+            Number(1),
+            link.target.identifier.location,
+        )
 
     def __link_expression(self, link: Link) -> Sequence[Expr]:
         name = link.target.name
@@ -969,9 +973,9 @@ class AbstractMessage(Type):
         target_length = self.__target_length(link)
         target_last = self.__target_last(link)
         return [
-            Equal(First(name), target_first, target_first.location),
-            Equal(Length(name), target_length, target_length.location),
-            Equal(Last(name), target_last, target_last.location),
+            Equal(First(name), target_first, target_first.location or self.location),
+            Equal(Length(name), target_length, target_length.location or self.location),
+            Equal(Last(name), target_last, target_last.location or self.location),
             GreaterEqual(First("Message"), Number(0), self.location),
             GreaterEqual(Last("Message"), Last(name), self.location),
             GreaterEqual(Last("Message"), First("Message"), self.location),
@@ -986,7 +990,7 @@ class AbstractMessage(Type):
     def __prove_field_positions(self) -> None:
         for f in self.fields:
             for p, l in [(p, p[-1]) for p in self._state.paths[f] if p]:
-                positive = GreaterEqual(self.__target_length(l), Number(0))
+                positive = GreaterEqual(self.__target_length(l), Number(0), l.length.location)
                 facts = [f for l in p for f in self.__link_expression(l)]
                 facts.extend(self.__type_constraints(positive))
                 proof = positive.check(facts)
@@ -1005,7 +1009,7 @@ class AbstractMessage(Type):
                         ]
                     )
 
-                start = GreaterEqual(self.__target_first(l), First("Message"))
+                start = GreaterEqual(self.__target_first(l), First("Message"), l.location)
                 facts.extend(self.__type_constraints(start))
                 proof = start.check(facts)
                 if proof.result != ProofResult.sat:
@@ -1051,6 +1055,7 @@ class AbstractMessage(Type):
                         And(
                             GreaterEqual(Variable("f"), self.__target_first(l)),
                             LessEqual(Variable("f"), self.__target_last(l)),
+                            l.location,
                         )
                     )
                     for l in path
@@ -1058,7 +1063,7 @@ class AbstractMessage(Type):
             )
 
             # Define that the end of the last field of a path is the end of the message
-            facts.append(Equal(self.__target_last(path[-1]), Last("Message")))
+            facts.append(Equal(self.__target_last(path[-1]), Last("Message"), self.location))
 
             # Constraints for links and types
             facts.extend([f for l in path for f in self.__link_expression(l)])
@@ -1090,7 +1095,7 @@ class AbstractMessage(Type):
             for p, l in [(p, p[-1]) for p in self._state.paths[f] if p]:
                 if l.first != UNDEFINED and isinstance(l.first, First):
                     facts = [f for l in p for f in self.__link_expression(l)]
-                    overlaid = Equal(self.__target_last(l), Last(l.first.prefix))
+                    overlaid = Equal(self.__target_last(l), Last(l.first.prefix), l.location)
                     proof = overlaid.check(facts)
                     if proof.result != ProofResult.sat:
                         self.error.append(
