@@ -214,9 +214,6 @@ class RangeInteger(Integer):
             )
             return
 
-        if not isinstance(size_num, Number):
-            return
-
         if not isinstance(last_num, Number):
             return
 
