@@ -678,7 +678,7 @@ def test_message_invalid_relation_to_aggregate() -> None:
     types = {Field("F1"): Opaque()}
     assert_type(
         Message("P.M", structure, types),
-        r'^<stdin>:100:20: model: error: invalid relation " <= " to aggregate$',
+        r'^<stdin>:100:20: model: error: invalid relation " <= " between Opaque and Aggregate$',
     )
 
 
@@ -694,7 +694,8 @@ def test_message_invalid_element_in_relation_to_aggregate() -> None:
     types = {Field("F1"): MODULAR_INTEGER}
     assert_type(
         Message("P.M", structure, types),
-        r'^<stdin>:14:7: model: error: invalid relation between "F1" and aggregate$',
+        r'^<stdin>:14:7: model: error: invalid relation " = " '
+        r"between Aggregate and ModularInteger$",
     )
 
 
@@ -1151,7 +1152,7 @@ class NewType(Type):
 
 @pytest.mark.skipif(not __debug__, reason="depends on contract")
 def test_invalid_message_field_type() -> None:
-    with pytest.raises(ViolationError, match=r"rflx/model.py, line 436"):
+    with pytest.raises(ViolationError):
         Message(
             "P.M", [Link(INITIAL, Field("F")), Link(Field("F"), FINAL)], {Field("F"): NewType("T")},
         )
